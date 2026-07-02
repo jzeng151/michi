@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { DashboardFrame } from "@/components/dashboard/DashboardFrame";
 import { SignOutButton } from "@/components/dashboard/SignOutButton";
 import { ThemeMenu } from "@/components/dashboard/ThemeMenu";
 
@@ -51,7 +52,7 @@ export default async function DashboardLayout({
         id="dashboard-content"
         className="flex min-h-0 flex-1 flex-col-reverse md:flex-row"
       >
-        {children}
+        <DashboardFrame>{children}</DashboardFrame>
       </div>
     </div>
   );
