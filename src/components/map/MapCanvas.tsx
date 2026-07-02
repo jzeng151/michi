@@ -19,6 +19,8 @@ const JAPAN_VIEW = { longitude: 137.2, latitude: 37.2, zoom: 4.5 };
 
 type MapCanvasProps = Omit<MapProps, "mapStyle" | "mapLib"> & {
   label: string;
+  /** Hide zoom/scale chrome (e.g. during cinematic playback). */
+  hideControls?: boolean;
 };
 
 /**
@@ -27,7 +29,10 @@ type MapCanvasProps = Omit<MapProps, "mapStyle" | "mapLib"> & {
  * after style swaps.
  */
 export const MapCanvas = forwardRef<MapRef, MapCanvasProps>(
-  function MapCanvas({ label, children, initialViewState, ...rest }, ref) {
+  function MapCanvas(
+    { label, children, initialViewState, hideControls, ...rest },
+    ref,
+  ) {
     const { resolvedMode } = useTheme();
 
     return (
@@ -39,8 +44,8 @@ export const MapCanvas = forwardRef<MapRef, MapCanvasProps>(
           style={{ width: "100%", height: "100%" }}
           {...rest}
         >
-          <NavigationControl position="top-right" />
-          <ScaleControl position="bottom-left" />
+          {!hideControls && <NavigationControl position="top-right" />}
+          {!hideControls && <ScaleControl position="bottom-left" />}
           {children}
         </Map>
       </div>

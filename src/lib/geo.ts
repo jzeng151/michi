@@ -84,6 +84,11 @@ export function bearingAtFraction(
   return (Math.atan2(y, x) * 180) / Math.PI;
 }
 
+/** Signed shortest rotation (degrees, -180..180) from one bearing to another. */
+export function shortestArcDelta(from: number, to: number): number {
+  return ((to - from + 540) % 360) - 180;
+}
+
 /** Fraction along the path of the vertex nearest to the given point. */
 export function nearestFraction(
   path: LineString,
