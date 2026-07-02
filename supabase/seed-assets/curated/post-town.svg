@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-label="Wooden Edo-period houses lining a sloped village street at dusk">
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9d9c4"/><stop offset="1" stop-color="#d9b99a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#dusk)"/>
+  <path d="M0 260 Q200 200 420 235 T800 215 V600 H0 Z" fill="#a68a76" opacity="0.55"/>
+  <path d="M300 600 L370 330 H430 L500 600 Z" fill="#cbb59c"/>
+  <g fill="#6e5647">
+    <path d="M40 600 V380 H250 V600 Z"/>
+    <path d="M20 385 L145 320 L270 385 Z"/>
+    <path d="M550 600 V370 H770 V600 Z"/>
+    <path d="M530 375 L660 305 L790 375 Z"/>
+    <path d="M120 600 V450 H330 V600 Z" opacity="0.9"/>
+    <path d="M100 455 L225 395 L350 455 Z" opacity="0.9"/>
+    <path d="M470 600 V460 H690 V600 Z" opacity="0.9"/>
+    <path d="M450 465 L580 400 L710 465 Z" opacity="0.9"/>
+  </g>
+  <g fill="#e9b86a">
+    <rect x="80" y="480" width="34" height="46" rx="4"/><rect x="180" y="480" width="34" height="46" rx="4"/>
+    <rect x="590" y="490" width="34" height="46" rx="4"/><rect x="660" y="490" width="34" height="46" rx="4"/>
+  </g>
+  <g fill="#c9502e">
+    <ellipse cx="140" cy="440" rx="12" ry="18"/><ellipse cx="640" cy="450" rx="12" ry="18"/>
+  </g>
+  <circle cx="640" cy="120" r="46" fill="#e6a25c" opacity="0.85"/>
+</svg>
