@@ -31,8 +31,22 @@ export const photoAltSchema = z
   .min(1, "Describe this photo for people who can't see it")
   .max(300);
 
-/** Only allow same-origin relative redirect targets (no open redirects). */
+/**
+ * Only allow same-origin relative redirect targets (no open redirects).
+ * Resolves against a dummy origin instead of prefix-matching, because
+ * browsers treat a backslash as a slash, so "/\evil.com" escapes a naive
+ * "starts with / but not //" check and navigates cross-origin.
+ */
 export function safeNextPath(next: string | null): string {
-  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  if (!next) return "/dashboard";
+  try {
+    const base = "http://localhost";
+    const url = new URL(next, base);
+    if (url.origin === base && url.pathname.startsWith("/")) {
+      return url.pathname + url.search + url.hash;
+    }
+  } catch {
+    // malformed target
+  }
   return "/dashboard";
 }

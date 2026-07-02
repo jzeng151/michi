@@ -104,6 +104,7 @@ export default async function PublicWalkPage({
           initial={data.comments}
           viewerId=""
           viewerName=""
+          viewerUsername=""
           canComment={false}
           lockedNote="Sign in to join the conversation."
         />

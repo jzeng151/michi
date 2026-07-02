@@ -1,5 +1,28 @@
 -- Michi initial schema: tables, constraints, RLS, storage policies, trigger, trending view.
 
+-- ============================================================ validators
+
+-- True when every coordinate is a [number, number] pair in geographic range.
+-- Used in the walks CHECK so a crafted path can't break the map for viewers.
+create function public.is_lnglat_array(coords jsonb)
+returns boolean
+language sql
+immutable
+as $$
+  select coords is not null
+    and jsonb_typeof(coords) = 'array'
+    and not exists (
+      select 1
+      from jsonb_array_elements(coords) as e
+      where jsonb_typeof(e) <> 'array'
+        or jsonb_array_length(e) <> 2
+        or jsonb_typeof(e->0) <> 'number'
+        or jsonb_typeof(e->1) <> 'number'
+        or (e->>0)::double precision not between -180 and 180
+        or (e->>1)::double precision not between -90 and 90
+    );
+$$;
+
 -- ============================================================ tables
 
 create table public.profiles (
@@ -20,6 +43,7 @@ create table public.walks (
   path jsonb not null check (
     path->>'type' = 'LineString'
     and jsonb_array_length(path->'coordinates') between 2 and 5000
+    and public.is_lnglat_array(path->'coordinates')
   ),
   distance_m integer not null check (distance_m >= 0),
   duration_s integer check (duration_s >= 0), -- null for drawn (untimed) walks
@@ -184,16 +208,28 @@ create policy "walks_delete_own" on public.walks
   using (owner_id = (select auth.uid()) and not is_curated);
 
 -- walk_media: visible with its walk; writable by the walk's owner.
--- Users may only reference the private bucket; 'curated' rows come from seed only.
+-- Users may only reference the private bucket ('curated' rows come from seed),
+-- and storage_path MUST live in the writer's own storage folder. Without the
+-- folder binding a user could register a row pointing at another user's object
+-- and, since the row belongs to a public walk, the storage read policy would
+-- then mint a signed URL for anyone — a cross-tenant read of private bytes.
 create policy "walk_media_select_visible" on public.walk_media
   for select using (public.can_view_walk(walk_id));
 create policy "walk_media_insert_own" on public.walk_media
   for insert to authenticated
-  with check (public.owns_editable_walk(walk_id) and bucket = 'walk-media');
+  with check (
+    public.owns_editable_walk(walk_id)
+    and bucket = 'walk-media'
+    and split_part(storage_path, '/', 1) = (select auth.uid())::text
+  );
 create policy "walk_media_update_own" on public.walk_media
   for update to authenticated
   using (public.owns_editable_walk(walk_id))
-  with check (public.owns_editable_walk(walk_id) and bucket = 'walk-media');
+  with check (
+    public.owns_editable_walk(walk_id)
+    and bucket = 'walk-media'
+    and split_part(storage_path, '/', 1) = (select auth.uid())::text
+  );
 create policy "walk_media_delete_own" on public.walk_media
   for delete to authenticated
   using (public.owns_editable_walk(walk_id));
@@ -294,6 +330,9 @@ create policy "walk_media_storage_select" on storage.objects
         where m.bucket = 'walk-media'
           and m.storage_path = storage.objects.name
           and w.visibility = 'public'
+          -- defense in depth: the object must live in the walk owner's folder,
+          -- so a mispointed media row can never surface someone else's bytes
+          and (storage.foldername(name))[1] = w.owner_id::text
       )
     )
   );

@@ -46,6 +46,7 @@ export type CommentItem = {
   created_at: string;
   authorId: string;
   authorName: string;
+  authorUsername: string;
 };
 
 export type WalkSummary = {

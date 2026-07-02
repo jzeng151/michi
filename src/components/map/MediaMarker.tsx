@@ -3,6 +3,12 @@
 import { Marker } from "react-map-gl/maplibre";
 import type { MediaPin } from "@/lib/types";
 
+/**
+ * MapLibre gives every marker container role="button", so the visual here is
+ * a non-interactive span (nesting a real button would be a nested-interactive
+ * a11y violation). Mouse users can click the marker; keyboard/screen-reader
+ * users use the equivalent stop list in the panel.
+ */
 export function MediaMarker({
   pin,
   index,
@@ -12,18 +18,17 @@ export function MediaMarker({
   index: number;
   onSelect?: (id: string) => void;
 }) {
-  const label =
-    pin.kind === "photo"
-      ? `Photo stop ${index + 1}: ${pin.alt ?? pin.caption ?? "photo"}`
-      : `Audio note ${index + 1}${pin.caption ? `: ${pin.caption}` : ""}`;
-
   return (
-    <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
-      <button
-        type="button"
-        aria-label={label}
-        onClick={() => onSelect?.(pin.id)}
-        className="block cursor-pointer rounded-full border-2 border-surface bg-surface shadow-md transition-transform hover:scale-110"
+    <Marker
+      longitude={pin.lng}
+      latitude={pin.lat}
+      anchor="bottom"
+      onClick={onSelect ? () => onSelect(pin.id) : undefined}
+      style={{ cursor: onSelect ? "pointer" : "default" }}
+    >
+      <span
+        aria-hidden="true"
+        className="block rounded-full border-2 border-surface bg-surface shadow-md transition-transform hover:scale-110"
       >
         {pin.kind === "photo" && pin.url ? (
           // eslint-disable-next-line @next/next/no-img-element -- storage-signed URLs; next/image adds nothing here
@@ -33,14 +38,15 @@ export function MediaMarker({
             className="h-10 w-10 rounded-full object-cover"
           />
         ) : (
-          <span
-            aria-hidden="true"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-wash text-lg"
-          >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-wash text-lg">
             {pin.kind === "photo" ? "🖼" : "🎙"}
           </span>
         )}
-      </button>
+      </span>
+      <span className="sr-only">
+        {index + 1}. {pin.kind === "photo" ? "Photo" : "Audio"}:{" "}
+        {pin.alt ?? pin.caption ?? pin.kind}
+      </span>
     </Marker>
   );
 }

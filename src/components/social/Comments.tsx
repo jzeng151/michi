@@ -11,6 +11,7 @@ export function Comments({
   initial,
   viewerId,
   viewerName,
+  viewerUsername,
   canComment,
   lockedNote = "Comments open up when the walk is shared publicly.",
 }: {
@@ -18,6 +19,7 @@ export function Comments({
   initial: CommentItem[];
   viewerId: string;
   viewerName: string;
+  viewerUsername: string;
   canComment: boolean;
   lockedNote?: string;
 }) {
@@ -51,6 +53,7 @@ export function Comments({
           created_at: data.created_at ?? new Date().toISOString(),
           authorId: viewerId,
           authorName: viewerName,
+          authorUsername: viewerUsername,
         },
       ]);
       setBody("");
@@ -80,8 +83,8 @@ export function Comments({
         {comments.map((c) => (
           <li key={c.id} className="rounded-xl bg-canvas p-3">
             <p className="mb-1 text-sm text-ink-muted">
-              <span className="font-medium text-ink">{c.authorName}</span> ·{" "}
-              {formatDate(c.created_at)}
+              <span className="font-medium text-ink">{c.authorName}</span>{" "}
+              <span>@{c.authorUsername}</span> · {formatDate(c.created_at)}
             </p>
             {/* Plain text node: React escapes it, so markup in comments renders literally. */}
             <p className="text-sm whitespace-pre-wrap">{c.body}</p>

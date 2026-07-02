@@ -317,6 +317,7 @@ export type Database = {
     }
     Functions: {
       can_view_walk: { Args: { w_id: string }; Returns: boolean }
+      is_lnglat_array: { Args: { coords: Json }; Returns: boolean }
       owns_editable_walk: { Args: { w_id: string }; Returns: boolean }
       walk_is_public: { Args: { w_id: string }; Returns: boolean }
     }

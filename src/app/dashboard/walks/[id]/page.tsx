@@ -29,8 +29,14 @@ export default async function WalkDetailPage({
 
   const viewerName =
     profileRes.data?.display_name ?? profileRes.data?.username ?? "You";
+  const viewerUsername = profileRes.data?.username ?? "you";
 
   return (
-    <WalkDetailPanel data={data} viewerId={user!.id} viewerName={viewerName} />
+    <WalkDetailPanel
+      data={data}
+      viewerId={user!.id}
+      viewerName={viewerName}
+      viewerUsername={viewerUsername}
+    />
   );
 }

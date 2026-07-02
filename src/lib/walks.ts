@@ -137,6 +137,7 @@ export async function fetchBrowseLists(
 export type WalkDetailData = {
   walk: WalkRow;
   ownerName: string;
+  ownerUsername: string;
   likeCount: number;
   media: MediaPin[];
   comments: CommentItem[];
@@ -216,6 +217,7 @@ export async function fetchWalkDetail(
       created_at: c.created_at ?? new Date().toISOString(),
       authorId: c.user_id,
       authorName: author?.display_name ?? author?.username ?? "Walker",
+      authorUsername: author?.username ?? "walker",
     };
   });
 
@@ -236,6 +238,7 @@ export async function fetchWalkDetail(
   return {
     walk,
     ownerName: profile?.display_name ?? profile?.username ?? "Unknown walker",
+    ownerUsername: profile?.username ?? "walker",
     likeCount: (data.likes as { count: number }[])[0]?.count ?? 0,
     media,
     comments,

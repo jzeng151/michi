@@ -20,12 +20,14 @@ export function WalkDetailPanel({
   data,
   viewerId,
   viewerName,
+  viewerUsername,
 }: {
   data: WalkDetailData;
   viewerId: string;
   viewerName: string;
+  viewerUsername: string;
 }) {
-  const { walk, ownerName, likeCount, media, comments } = data;
+  const { walk, ownerName, ownerUsername, likeCount, media, comments } = data;
   const isOwner = walk.owner_id === viewerId;
   const isPublic = walk.visibility === "public";
   const [playback, setPlayback] = useState<PlaybackMode | null>(null);
@@ -48,7 +50,10 @@ export function WalkDetailPanel({
           {[walk.region, formatDistance(walk.distance_m)]
             .filter(Boolean)
             .join(" · ")}{" "}
-          · by {ownerName}
+          · by {ownerName}{" "}
+          {!walk.is_curated && (
+            <span className="text-ink-muted">@{ownerUsername}</span>
+          )}
         </p>
         <p className="text-sm text-ink-muted">
           {formatDate(walk.created_at)}
@@ -117,6 +122,7 @@ export function WalkDetailPanel({
         initial={comments}
         viewerId={viewerId}
         viewerName={viewerName}
+        viewerUsername={viewerUsername}
         canComment={isPublic}
       />
     </article>

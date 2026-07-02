@@ -127,13 +127,18 @@ export function DashboardMap() {
 
       {display?.kind === "overview" &&
         display.points.map((p) => (
-          <Marker key={p.id} longitude={p.start[0]} latitude={p.start[1]}>
-            <button
-              type="button"
-              aria-label={`Open walk: ${p.title}`}
-              onClick={() => router.push(`/dashboard/walks/${p.id}`)}
-              className="block h-4 w-4 cursor-pointer rounded-full border-2 border-surface bg-accent shadow-md transition-transform hover:scale-125"
+          <Marker
+            key={p.id}
+            longitude={p.start[0]}
+            latitude={p.start[1]}
+            onClick={() => router.push(`/dashboard/walks/${p.id}`)}
+            style={{ cursor: "pointer" }}
+          >
+            <span
+              aria-hidden="true"
+              className="block h-4 w-4 rounded-full border-2 border-surface bg-accent shadow-md transition-transform hover:scale-125"
             />
+            <span className="sr-only">Open walk: {p.title}</span>
           </Marker>
         ))}
 
