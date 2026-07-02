@@ -1,26 +1,151 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+ * Michi theme system: two axes on <html> — data-season (spring|summer|autumn|winter)
+ * and data-mode (light|dark). Components only use the semantic utilities below;
+ * adding a palette touches this file only.
+ */
+
+:root,
+[data-season="spring"][data-mode="light"] {
+  --canvas: #faf6f1;
+  --surface: #ffffff;
+  --ink: #2b2724;
+  --ink-muted: #675d57;
+  --accent: #a84455;
+  --accent-ink: #ffffff;
+  --line: #e5dcd2;
+  --wash: #f3e7e4;
+  --focus: #7d3341;
 }
 
+[data-season="spring"][data-mode="dark"] {
+  --canvas: #201c1e;
+  --surface: #2a2528;
+  --ink: #f0e8e6;
+  --ink-muted: #b3a6a4;
+  --accent: #e58e9e;
+  --accent-ink: #2b1218;
+  --line: #3d3538;
+  --wash: #38292e;
+  --focus: #f2b6c1;
+}
+
+[data-season="summer"][data-mode="light"] {
+  --canvas: #f5f7f0;
+  --surface: #ffffff;
+  --ink: #24291f;
+  --ink-muted: #59634f;
+  --accent: #3e6b4f;
+  --accent-ink: #ffffff;
+  --line: #dde3d3;
+  --wash: #e7eedd;
+  --focus: #2c4f3a;
+}
+
+[data-season="summer"][data-mode="dark"] {
+  --canvas: #1b201a;
+  --surface: #242b22;
+  --ink: #e9ede2;
+  --ink-muted: #a8b39d;
+  --accent: #8fbf9a;
+  --accent-ink: #14231a;
+  --line: #333c30;
+  --wash: #2b3628;
+  --focus: #b4d9bd;
+}
+
+[data-season="autumn"][data-mode="light"] {
+  --canvas: #faf4ea;
+  --surface: #fffdf8;
+  --ink: #2e2620;
+  --ink-muted: #6b5d4f;
+  --accent: #a3511f;
+  --accent-ink: #ffffff;
+  --line: #e8dcc9;
+  --wash: #f4e7d3;
+  --focus: #7c3d16;
+}
+
+[data-season="autumn"][data-mode="dark"] {
+  --canvas: #211c17;
+  --surface: #2b251e;
+  --ink: #f0e9df;
+  --ink-muted: #b5a894;
+  --accent: #e0955c;
+  --accent-ink: #291807;
+  --line: #3e362c;
+  --wash: #382e22;
+  --focus: #edb98a;
+}
+
+[data-season="winter"][data-mode="light"] {
+  --canvas: #f4f6f7;
+  --surface: #ffffff;
+  --ink: #222629;
+  --ink-muted: #556066;
+  --accent: #3a5a72;
+  --accent-ink: #ffffff;
+  --line: #dbe1e4;
+  --wash: #e5ebee;
+  --focus: #2a4356;
+}
+
+[data-season="winter"][data-mode="dark"] {
+  --canvas: #191d20;
+  --surface: #22272b;
+  --ink: #e6ebee;
+  --ink-muted: #9fabb2;
+  --accent: #8ab4cf;
+  --accent-ink: #0e1e29;
+  --line: #313a40;
+  --wash: #293238;
+  --focus: #b2d3e6;
+}
+
+/*
+ * `inline` is load-bearing: it makes utilities compile to var(--token) at the
+ * point of use, so data-attribute switching on <html> cascades correctly.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-line: var(--line);
+  --color-wash: var(--wash);
+  --color-focus: var(--focus);
+  --font-sans: var(--font-zen-kaku), "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-display: var(--font-shippori), "Hiragino Mincho ProN", "Noto Serif JP", serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible, high-contrast focus for keyboard users; never removed, only styled. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--wash);
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
