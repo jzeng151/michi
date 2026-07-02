@@ -7,6 +7,20 @@ export function curatedUrl(path: string): string {
   return `${PUBLIC_BASE}/curated/${encodeURIComponent(path)}`;
 }
 
+const MIME_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "audio/webm": "webm",
+  "audio/mp4": "m4a",
+  "audio/ogg": "ogg",
+  "audio/mpeg": "mp3",
+};
+
+export function extForMime(mime: string): string | null {
+  return MIME_EXT[mime.split(";")[0]] ?? null;
+}
+
 /**
  * Resolve display URLs for media rows, keyed by storage_path. Curated art is
  * on a public bucket; private-bucket paths get 1h signed URLs, which storage
