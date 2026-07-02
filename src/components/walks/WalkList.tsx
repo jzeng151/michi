@@ -8,7 +8,9 @@ import { WalkCard } from "./WalkCard";
 const TABS = [
   { key: "curated", label: "Curated" },
   { key: "trending", label: "Trending" },
+  { key: "top", label: "Top" },
   { key: "community", label: "Community" },
+  { key: "friends", label: "Friends" },
   { key: "mine", label: "My walks" },
 ] as const;
 
@@ -17,7 +19,9 @@ type TabKey = (typeof TABS)[number]["key"];
 const EMPTY_COPY: Record<TabKey, string> = {
   curated: "No curated walks yet.",
   trending: "Nothing trending this week — be the first to like a walk.",
+  top: "No liked walks yet.",
   community: "No community walks yet.",
+  friends: "Follow walkers you enjoy and their walks will gather here.",
   mine: "You haven't recorded a walk yet. Tap “New walk” to start.",
 };
 

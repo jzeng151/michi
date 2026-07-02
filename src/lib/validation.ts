@@ -19,6 +19,12 @@ export const walkFormSchema = z.object({
   visibility: z.enum(["public", "private"]),
 });
 
+export const commentSchema = z
+  .string()
+  .trim()
+  .min(1, "Write something first")
+  .max(2000, "Keep comments under 2000 characters");
+
 export const photoAltSchema = z
   .string()
   .trim()

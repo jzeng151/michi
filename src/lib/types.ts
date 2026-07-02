@@ -40,6 +40,14 @@ export type MediaPin = {
   lng: number;
 };
 
+export type CommentItem = {
+  id: string;
+  body: string;
+  created_at: string;
+  authorId: string;
+  authorName: string;
+};
+
 export type WalkSummary = {
   id: string;
   title: string;

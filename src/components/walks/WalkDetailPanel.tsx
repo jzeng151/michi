@@ -3,12 +3,27 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { setMapDisplay } from "@/components/map/display-store";
+import { Comments } from "@/components/social/Comments";
+import { FollowButton } from "@/components/social/FollowButton";
+import { LikeButton } from "@/components/social/LikeButton";
+import { ShareButton } from "@/components/social/ShareButton";
+import { VisibilityToggle } from "@/components/social/VisibilityToggle";
 import { formatDate, formatDistance } from "@/lib/format";
 import type { WalkDetailData } from "@/lib/walks";
 import { MediaStopList } from "./MediaStopList";
 
-export function WalkDetailPanel({ data }: { data: WalkDetailData }) {
-  const { walk, ownerName, likeCount, media } = data;
+export function WalkDetailPanel({
+  data,
+  viewerId,
+  viewerName,
+}: {
+  data: WalkDetailData;
+  viewerId: string;
+  viewerName: string;
+}) {
+  const { walk, ownerName, likeCount, media, comments } = data;
+  const isOwner = walk.owner_id === viewerId;
+  const isPublic = walk.visibility === "public";
 
   useEffect(() => {
     setMapDisplay({ kind: "walk", walkId: walk.id, path: walk.path, media });
@@ -31,8 +46,6 @@ export function WalkDetailPanel({ data }: { data: WalkDetailData }) {
           · by {ownerName}
         </p>
         <p className="text-sm text-ink-muted">
-          <span aria-hidden="true">♥</span>
-          <span className="sr-only">Likes:</span> {likeCount} ·{" "}
           {formatDate(walk.created_at)}
           {walk.visibility === "private" && (
             <span className="ml-2 rounded-full bg-wash px-2 py-0.5 text-xs">
@@ -40,11 +53,39 @@ export function WalkDetailPanel({ data }: { data: WalkDetailData }) {
             </span>
           )}
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <LikeButton
+            walkId={walk.id}
+            initialCount={likeCount}
+            initialLiked={data.likedByMe}
+            viewerId={viewerId}
+            isPublic={isPublic}
+          />
+          {!walk.is_curated && (
+            <FollowButton
+              ownerId={walk.owner_id}
+              ownerName={ownerName}
+              viewerId={viewerId}
+              initialFollowing={data.followsOwner}
+            />
+          )}
+          {isPublic && <ShareButton walkId={walk.id} title={walk.title} />}
+          {isOwner && !walk.is_curated && (
+            <VisibilityToggle walkId={walk.id} visibility={walk.visibility} />
+          )}
+        </div>
       </header>
       {walk.description && (
         <p className="text-sm leading-relaxed">{walk.description}</p>
       )}
       <MediaStopList media={media} />
+      <Comments
+        walkId={walk.id}
+        initial={comments}
+        viewerId={viewerId}
+        viewerName={viewerName}
+        canComment={isPublic}
+      />
     </article>
   );
 }

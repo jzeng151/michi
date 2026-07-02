@@ -7,6 +7,7 @@ import { fetchWalkDetail } from "@/lib/walks";
 import { formatDate, formatDistance } from "@/lib/format";
 import { WalkMap } from "@/components/map/WalkMap";
 import { MediaStopList } from "@/components/walks/MediaStopList";
+import { Comments } from "@/components/social/Comments";
 
 const getDetail = cache(async (id: string) => {
   if (!z.uuid().safeParse(id).success) return null;
@@ -97,6 +98,15 @@ export default async function PublicWalkPage({
         )}
 
         <MediaStopList media={media} />
+
+        <Comments
+          walkId={walk.id}
+          initial={data.comments}
+          viewerId=""
+          viewerName=""
+          canComment={false}
+          lockedNote="Sign in to join the conversation."
+        />
       </main>
     </div>
   );

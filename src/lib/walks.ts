@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
 import { resolveMediaUrls } from "./media-url";
 import type {
+  CommentItem,
   LineString,
   MediaPin,
   MediaRow,
@@ -57,6 +58,8 @@ export type BrowseLists = {
   curated: WalkSummary[];
   trending: WalkSummary[];
   community: WalkSummary[];
+  friends: WalkSummary[];
+  top: WalkSummary[];
   mine: WalkSummary[];
 };
 
@@ -64,7 +67,8 @@ export async function fetchBrowseLists(
   supabase: Client,
   userId: string,
 ): Promise<BrowseLists> {
-  const [curatedRes, communityRes, mineRes, trendingRes] = await Promise.all([
+  const [curatedRes, communityRes, mineRes, trendingRes, followsRes] =
+    await Promise.all([
     supabase
       .from("walks")
       .select(SUMMARY_SELECT)
@@ -82,7 +86,20 @@ export async function fetchBrowseLists(
       .eq("owner_id", userId)
       .order("created_at", { ascending: false }),
     supabase.from("trending_walks").select("id, recent_likes").limit(12),
+    supabase.from("follows").select("followee_id").eq("follower_id", userId),
   ]);
+
+  const followeeIds = (followsRes.data ?? []).map((f) => f.followee_id);
+  const friendsRes =
+    followeeIds.length > 0
+      ? await supabase
+          .from("walks")
+          .select(SUMMARY_SELECT)
+          .in("owner_id", followeeIds)
+          .eq("visibility", "public")
+          .order("created_at", { ascending: false })
+          .limit(30)
+      : { data: [] };
 
   const curated = await toSummaries(
     supabase,
@@ -93,6 +110,10 @@ export async function fetchBrowseLists(
     (communityRes.data ?? []) as SummaryRow[],
   );
   const mine = await toSummaries(supabase, (mineRes.data ?? []) as SummaryRow[]);
+  const friends = await toSummaries(
+    supabase,
+    (friendsRes.data ?? []) as SummaryRow[],
+  );
 
   // Trending rows are public, so they're already in curated/community;
   // resolve from those to avoid a second fetch (the 30-row community cap can
@@ -104,7 +125,13 @@ export async function fetchBrowseLists(
     .map((t) => (t.id ? byId.get(t.id) : undefined))
     .filter((s): s is WalkSummary => Boolean(s));
 
-  return { curated, trending, community, mine };
+  // All-time top by likes across the fetched public sets (community is
+  // capped at 30 recent walks, acceptable at this scale).
+  const top = [...byId.values()]
+    .sort((a, b) => b.likeCount - a.likeCount)
+    .slice(0, 12);
+
+  return { curated, trending, community, friends, top, mine };
 }
 
 export type WalkDetailData = {
@@ -112,11 +139,16 @@ export type WalkDetailData = {
   ownerName: string;
   likeCount: number;
   media: MediaPin[];
+  comments: CommentItem[];
+  /** Present when a viewer id was supplied. */
+  likedByMe: boolean;
+  followsOwner: boolean;
 };
 
 export async function fetchWalkDetail(
   supabase: Client,
   id: string,
+  viewerId?: string,
 ): Promise<WalkDetailData | null> {
   const { data } = await supabase
     .from("walks")
@@ -147,6 +179,46 @@ export async function fetchWalkDetail(
     display_name: string | null;
   } | null;
 
+  const [commentsRes, likedRes, followRes] = await Promise.all([
+    supabase
+      .from("comments")
+      .select(
+        "id, body, created_at, user_id, profiles!comments_user_id_fkey(username, display_name)",
+      )
+      .eq("walk_id", id)
+      .order("created_at"),
+    viewerId
+      ? supabase
+          .from("likes")
+          .select("walk_id")
+          .eq("walk_id", id)
+          .eq("user_id", viewerId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    viewerId
+      ? supabase
+          .from("follows")
+          .select("followee_id")
+          .eq("follower_id", viewerId)
+          .eq("followee_id", data.owner_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const comments: CommentItem[] = (commentsRes.data ?? []).map((c) => {
+    const author = c.profiles as {
+      username: string;
+      display_name: string | null;
+    } | null;
+    return {
+      id: c.id,
+      body: c.body,
+      created_at: c.created_at ?? new Date().toISOString(),
+      authorId: c.user_id,
+      authorName: author?.display_name ?? author?.username ?? "Walker",
+    };
+  });
+
   const walk: WalkRow = {
     id: data.id,
     owner_id: data.owner_id,
@@ -166,5 +238,8 @@ export async function fetchWalkDetail(
     ownerName: profile?.display_name ?? profile?.username ?? "Unknown walker",
     likeCount: (data.likes as { count: number }[])[0]?.count ?? 0,
     media,
+    comments,
+    likedByMe: Boolean(likedRes.data),
+    followsOwner: Boolean(followRes.data),
   };
 }
