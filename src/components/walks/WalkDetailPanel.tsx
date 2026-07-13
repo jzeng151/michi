@@ -7,9 +7,6 @@ import {
   PlaybackOverlay,
   type PlaybackMode,
 } from "@/components/playback/PlaybackOverlay";
-import { Comments } from "@/components/social/Comments";
-import { FollowButton } from "@/components/social/FollowButton";
-import { LikeButton } from "@/components/social/LikeButton";
 import { ShareButton } from "@/components/social/ShareButton";
 import { VisibilityToggle } from "@/components/social/VisibilityToggle";
 import { formatDate, formatDistance } from "@/lib/format";
@@ -19,15 +16,11 @@ import { MediaStopList } from "./MediaStopList";
 export function WalkDetailPanel({
   data,
   viewerId,
-  viewerName,
-  viewerUsername,
 }: {
   data: WalkDetailData;
   viewerId: string;
-  viewerName: string;
-  viewerUsername: string;
 }) {
-  const { walk, ownerName, ownerUsername, likeCount, media, comments } = data;
+  const { walk, ownerName, ownerUsername, media } = data;
   const isOwner = walk.owner_id === viewerId;
   const isPublic = walk.visibility === "public";
   const [playback, setPlayback] = useState<PlaybackMode | null>(null);
@@ -64,21 +57,6 @@ export function WalkDetailPanel({
           )}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <LikeButton
-            walkId={walk.id}
-            initialCount={likeCount}
-            initialLiked={data.likedByMe}
-            viewerId={viewerId}
-            isPublic={isPublic}
-          />
-          {!walk.is_curated && (
-            <FollowButton
-              ownerId={walk.owner_id}
-              ownerName={ownerName}
-              viewerId={viewerId}
-              initialFollowing={data.followsOwner}
-            />
-          )}
           {isPublic && <ShareButton walkId={walk.id} title={walk.title} />}
           {isOwner && !walk.is_curated && (
             <VisibilityToggle walkId={walk.id} visibility={walk.visibility} />
@@ -117,14 +95,6 @@ export function WalkDetailPanel({
           onExit={() => setPlayback(null)}
         />
       )}
-      <Comments
-        walkId={walk.id}
-        initial={comments}
-        viewerId={viewerId}
-        viewerName={viewerName}
-        viewerUsername={viewerUsername}
-        canComment={isPublic}
-      />
     </article>
   );
 }

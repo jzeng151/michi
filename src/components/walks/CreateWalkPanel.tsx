@@ -9,7 +9,6 @@ import {
   setMapDisplay,
 } from "@/components/map/display-store";
 import { MediaCapture, type CapturedMedia } from "@/components/media/MediaCapture";
-import { useGpsRecorder } from "@/components/record/useGpsRecorder";
 import { pathDistance } from "@/lib/geo";
 import { extForMime } from "@/lib/media-url";
 import { createClient } from "@/lib/supabase/client";
@@ -24,8 +23,6 @@ type StagedMedia = CapturedMedia & {
   pointIndex: number;
 };
 
-type InputMode = "draw" | "gps";
-
 const button =
   "rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash disabled:opacity-50 disabled:hover:bg-transparent";
 const primaryButton =
@@ -35,7 +32,6 @@ const inputClass =
 
 export function CreateWalkPanel() {
   const router = useRouter();
-  const [mode, setMode] = useState<InputMode>("draw");
   const [drawPoints, setDrawPoints] = useState<[number, number][]>([]);
   const [staged, setStaged] = useState<StagedMedia[]>([]);
   const [title, setTitle] = useState("");
@@ -46,17 +42,14 @@ export function CreateWalkPanel() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const gps = useGpsRecorder();
+  const pathCoords = drawPoints;
 
-  const pathCoords = mode === "draw" ? drawPoints : gps.points;
-  const recording = gps.status === "recording" || gps.status === "requesting";
-
-  // Draw mode: map clicks append waypoints.
+  // Map clicks append waypoints.
   useEffect(() => {
-    if (mode !== "draw" || saving) return;
+    if (saving) return;
     setMapClickHandler((lngLat) => setDrawPoints((p) => [...p, lngLat]));
     return () => setMapClickHandler(null);
-  }, [mode, saving]);
+  }, [saving]);
 
   // Publish the draft to the map.
   useEffect(() => {
@@ -72,9 +65,9 @@ export function CreateWalkPanel() {
         lng: pathCoords[m.pointIndex]?.[0] ?? 0,
         lat: pathCoords[m.pointIndex]?.[1] ?? 0,
       })),
-      position: recording ? gps.position : null,
+      position: null,
     });
-  }, [pathCoords, staged, recording, gps.position]);
+  }, [pathCoords, staged]);
 
   useEffect(() => () => setMapDisplay(null), []);
 
@@ -179,7 +172,7 @@ export function CreateWalkPanel() {
           coordinates: pathCoords,
         } as unknown as Json,
         distance_m: distanceM,
-        duration_s: mode === "gps" ? gps.durationS() : null,
+        duration_s: null,
         visibility: values.visibility,
       })
       .select("id")
@@ -221,7 +214,6 @@ export function CreateWalkPanel() {
       if (rowError) failures.push(`item ${i + 1}: ${rowError.message}`);
     }
 
-    gps.clearSnapshot();
     staged.forEach((m) => URL.revokeObjectURL(m.previewUrl));
 
     if (failures.length > 0) {
@@ -244,222 +236,92 @@ export function CreateWalkPanel() {
       </Link>
       <h1 className="font-display text-2xl font-semibold">New walk</h1>
 
-      <fieldset className="flex gap-2">
-        <legend className="mb-2 text-sm text-ink-muted">
-          How do you want to create it?
-        </legend>
-        {(
-          [
-            ["draw", "Draw on map"],
-            ["gps", "Record with GPS"],
-          ] as const
-        ).map(([value, label]) => (
-          <label
-            key={value}
-            className={`cursor-pointer rounded-full border px-4 py-2 text-sm transition-colors ${
-              mode === value
-                ? "border-accent bg-accent text-accent-ink"
-                : "border-line hover:bg-wash"
-            }`}
+      <section aria-label="Waypoints" className="flex flex-col gap-3">
+        <p className="text-sm text-ink-muted">
+          Tap the map to add points along your route, or use the button below
+          to drop a point at the map&apos;s center crosshair.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={button} onClick={requestCenterPoint}>
+            ＋ Add point at map center
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={drawPoints.length === 0}
+            onClick={() => setDrawPoints((p) => p.slice(0, -1))}
           >
-            <input
-              type="radio"
-              name="input-mode"
-              value={value}
-              checked={mode === value}
-              onChange={() => setMode(value)}
-              className="sr-only"
-            />
-            {label}
-          </label>
-        ))}
-      </fieldset>
-
-      {mode === "draw" ? (
-        <section aria-label="Waypoints" className="flex flex-col gap-3">
-          <p className="text-sm text-ink-muted">
-            Tap the map to add points along your route, or use the button
-            below to drop a point at the map&apos;s center crosshair.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={button}
-              onClick={requestCenterPoint}
-            >
-              ＋ Add point at map center
-            </button>
-            <button
-              type="button"
-              className={button}
-              disabled={drawPoints.length === 0}
-              onClick={() => setDrawPoints((p) => p.slice(0, -1))}
-            >
-              Undo last
-            </button>
-            <button
-              type="button"
-              className={button}
-              disabled={drawPoints.length === 0}
-              onClick={() => setDrawPoints([])}
-            >
-              Clear
-            </button>
-          </div>
-          <p className="text-sm" aria-live="polite">
-            {drawPoints.length} point{drawPoints.length === 1 ? "" : "s"} ·{" "}
-            {formatDistance(distanceM)}
-          </p>
-          {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
-          {drawPoints.length > 0 && (
-            <ol className="flex max-h-48 flex-col gap-1 overflow-y-auto">
-              {drawPoints.map(([lng, lat], i) => (
-                <li
-                  key={`${lng}-${lat}-${i}`}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-canvas px-3 py-1.5 text-sm"
-                >
-                  <span>
-                    Point {i + 1}{" "}
-                    <span className="text-ink-muted">
-                      {lat.toFixed(4)}, {lng.toFixed(4)}
-                    </span>
+            Undo last
+          </button>
+          <button
+            type="button"
+            className={button}
+            disabled={drawPoints.length === 0}
+            onClick={() => setDrawPoints([])}
+          >
+            Clear
+          </button>
+        </div>
+        <p className="text-sm" aria-live="polite">
+          {drawPoints.length} point{drawPoints.length === 1 ? "" : "s"} ·{" "}
+          {formatDistance(distanceM)}
+        </p>
+        {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
+        {drawPoints.length > 0 && (
+          <ol className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+            {drawPoints.map(([lng, lat], i) => (
+              <li
+                key={`${lng}-${lat}-${i}`}
+                className="flex items-center justify-between gap-2 rounded-lg bg-canvas px-3 py-1.5 text-sm"
+              >
+                <span>
+                  Point {i + 1}{" "}
+                  <span className="text-ink-muted">
+                    {lat.toFixed(4)}, {lng.toFixed(4)}
                   </span>
-                  <span className="flex gap-1">
-                    <button
-                      type="button"
-                      aria-label={`Move point ${i + 1} earlier`}
-                      className="rounded px-2 py-0.5 hover:bg-wash disabled:opacity-40"
-                      disabled={i === 0}
-                      onClick={() => movePoint(i, -1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Move point ${i + 1} later`}
-                      className="rounded px-2 py-0.5 hover:bg-wash disabled:opacity-40"
-                      disabled={i === drawPoints.length - 1}
-                      onClick={() => movePoint(i, 1)}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={`Remove point ${i + 1}`}
-                      className="rounded px-2 py-0.5 hover:bg-wash"
-                      onClick={() => removePoint(i)}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-      ) : (
-        <section aria-label="GPS recording" className="flex flex-col gap-3">
-          <div aria-live="polite" className="flex flex-col gap-1 text-sm">
-            {gps.status === "idle" && (
-              <p className="text-ink-muted">
-                Record your route as you walk. Your screen stays awake while
-                recording.
-              </p>
-            )}
-            {gps.status === "requesting" && <p>Waiting for location…</p>}
-            {gps.status === "recording" && (
-              <p>
-                Recording — {gps.points.length} points ·{" "}
-                {formatDistance(gps.distanceM)}
-              </p>
-            )}
-            {gps.status === "paused" && (
-              <p>
-                Paused at {gps.points.length} points ·{" "}
-                {formatDistance(gps.distanceM)}
-              </p>
-            )}
-            {gps.status === "reviewing" && (
-              <p>
-                Finished: {gps.points.length} points ·{" "}
-                {formatDistance(gps.distanceM)}. Review and save below.
-              </p>
-            )}
-            {gps.searching && (
-              <p className="rounded-lg bg-wash px-3 py-2">
-                Searching for GPS signal…
-              </p>
-            )}
-            {gps.status === "denied" && (
-              <p className="rounded-lg bg-wash px-3 py-2">
-                Location access is blocked. Enable it for this site in your
-                browser settings, then reload.
-              </p>
-            )}
-            {gps.status === "unavailable" && (
-              <p className="rounded-lg bg-wash px-3 py-2">
-                This browser can&apos;t provide location. Try drawing your
-                walk instead.
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {gps.status === "idle" && (
-              <>
-                <button type="button" className={primaryButton} onClick={gps.start}>
-                  ● Start recording
-                </button>
-                {gps.snapshotAvailable && (
+                </span>
+                <span className="flex gap-1">
                   <button
                     type="button"
-                    className={button}
-                    onClick={gps.resumeSnapshot}
+                    aria-label={`Move point ${i + 1} earlier`}
+                    className="rounded px-2 py-0.5 hover:bg-wash disabled:opacity-40"
+                    disabled={i === 0}
+                    onClick={() => movePoint(i, -1)}
                   >
-                    Resume previous recording
+                    ↑
                   </button>
-                )}
-              </>
-            )}
-            {gps.status === "recording" && (
-              <>
-                <button type="button" className={button} onClick={gps.pause}>
-                  ⏸ Pause
-                </button>
-                <button type="button" className={primaryButton} onClick={gps.finish}>
-                  ■ Finish
-                </button>
-              </>
-            )}
-            {gps.status === "paused" && (
-              <>
-                <button type="button" className={primaryButton} onClick={gps.resume}>
-                  ● Resume
-                </button>
-                <button type="button" className={button} onClick={gps.finish}>
-                  ■ Finish
-                </button>
-              </>
-            )}
-            {(gps.status === "paused" ||
-              gps.status === "recording" ||
-              gps.status === "reviewing") && (
-              <button type="button" className={button} onClick={gps.discard}>
-                Discard
-              </button>
-            )}
-          </div>
-          {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
-        </section>
-      )}
+                  <button
+                    type="button"
+                    aria-label={`Move point ${i + 1} later`}
+                    className="rounded px-2 py-0.5 hover:bg-wash disabled:opacity-40"
+                    disabled={i === drawPoints.length - 1}
+                    onClick={() => movePoint(i, 1)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove point ${i + 1}`}
+                    className="rounded px-2 py-0.5 hover:bg-wash"
+                    onClick={() => removePoint(i)}
+                  >
+                    ✕
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
-      <section aria-label="Photos and audio notes" className="flex flex-col gap-3">
+      <section aria-label="Photos" className="flex flex-col gap-3">
         <h2 className="font-medium">Memories along the way</h2>
         {pathCoords.length === 0 ? (
           <p className="text-sm text-ink-muted">
-            Add route points first, then attach photos and audio notes to them.
+            Add route points first, then attach photos to them.
           </p>
         ) : (
-          <MediaCapture onCapture={onCapture} />
+          <MediaCapture onCapture={onCapture} showAudio={false} />
         )}
         {staged.length > 0 && (
           <ul className="flex flex-col gap-3">
@@ -606,7 +468,7 @@ export function CreateWalkPanel() {
       <button
         type="button"
         className={primaryButton}
-        disabled={saving || recording}
+        disabled={saving}
         onClick={save}
       >
         {saving ? "Saving…" : "Save walk"}

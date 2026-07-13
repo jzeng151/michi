@@ -79,7 +79,7 @@ export function StepThrough({
       >
         {media.length === 0 ? (
           <p className="text-sm text-ink-muted">
-            This walk has no photo or audio stops yet — enjoy the route.
+            This walk has no photo stops yet — enjoy the route.
           </p>
         ) : (
           <>

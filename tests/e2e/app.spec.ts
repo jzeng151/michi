@@ -17,16 +17,44 @@ async function expectNoHighImpactViolations(page: Page) {
   ).toEqual([]);
 }
 
-test("opens the authenticated dashboard and seeded walk", async ({ page }) => {
+test("shows only v1 collections and photo-first walk creation", async ({
+  page,
+}) => {
   await page.goto("/dashboard");
+  await expect(page.getByRole("tab")).toHaveText(["Curated", "My walks"]);
+
+  await page.getByRole("link", { name: /New walk/ }).click();
+
+  await expect(page).toHaveURL(/\/dashboard\/new$/);
+  await expect(page.getByRole("heading", { name: "New walk" })).toBeVisible();
   await expect(
-    page.getByRole("tab", { name: "Curated", selected: true }),
+    page.getByRole("button", { name: "Add point at map center" }),
   ).toBeVisible();
+  const photos = page.getByRole("region", { name: "Photos" });
+  await expect(photos).toBeVisible();
+  await page.getByRole("button", { name: "Add point at map center" }).click();
+  await expect(photos.getByText("Add photo")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText(/\b(?:GPS|audio)\b/i);
+});
+
+test("opens and replays the seeded photo walk without social controls", async ({
+  page,
+}) => {
+  await page.goto("/dashboard");
 
   await page.getByRole("link", { name: new RegExp(walkTitle) }).click();
 
   await expect(page).toHaveURL(new RegExp(`${walkId}$`));
   await expect(page.getByRole("heading", { name: walkTitle })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /(?:un)?like this walk/i }),
+  ).toHaveCount(0);
+  await expect(page.getByText("Likes:", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /^Follow(?:ing)?\b/i }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Comments" })).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/\b(?:GPS|audio)\b/i);
   await expect(
     page.getByRole("button", { name: "Play this walk" }),
   ).toBeVisible();
@@ -42,6 +70,15 @@ test("opens the authenticated dashboard and seeded walk", async ({ page }) => {
   await expect(dialog.getByText("Stop 1 of 2", { exact: false })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Next/ })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Exit/ })).toBeVisible();
+});
+
+test("keeps the public walk page photo-first and social-free", async ({ page }) => {
+  await page.goto(`/walks/${walkId}`);
+
+  await expect(page.getByRole("heading", { name: walkTitle })).toBeVisible();
+  await expect(page.getByText("Likes:", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Comments" })).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/\b(?:GPS|audio)\b/i);
 });
 
 test("has no critical or serious accessibility violations", async ({ page }) => {

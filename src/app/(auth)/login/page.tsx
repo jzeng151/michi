@@ -102,7 +102,7 @@ function LoginForm() {
           <p className="text-sm text-ink-muted">
             {mode === "signin"
               ? "Sign in to continue your journey."
-              : "Create an account to record and share walks."}
+              : "Create an account to save and replay walks."}
           </p>
         </header>
 
