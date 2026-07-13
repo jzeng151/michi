@@ -80,6 +80,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   const draftRef = useRef<WalkDraft | null>(null);
   const skipFlush = useRef(false);
   const browserRecoveryEnabled = useRef(true);
+  const confirmRestoredDraft = useRef(false);
 
   const updateDraft = useCallback((change: (current: WalkDraft) => WalkDraft) => {
     setDraft((current) => (current ? change(current) : current));
@@ -140,13 +141,14 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
             .eq("id", restored.id)
             .maybeSingle();
           if (confirmation.error) {
-            throw new Error(
-              `Couldn't confirm whether this draft was already saved: ${confirmation.error.message}`,
+            confirmRestoredDraft.current = true;
+            setDraftNotice(
+              `Draft restored, but its saved status couldn't be confirmed: ${confirmation.error.message}. You can keep editing; we'll check again when you save.`,
             );
           }
           if (confirmation.data) {
             skipFlush.current = true;
-            await repository.clear(userId);
+            await repository.clear(userId).catch(() => undefined);
             router.replace(`/dashboard/walks/${restored.id}`);
             return;
           }
@@ -161,7 +163,9 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         }
         setPreviews(nextPreviews);
         setDraft(value);
-        if (restored) setDraftNotice("Draft restored from this browser.");
+        if (restored && !confirmRestoredDraft.current) {
+          setDraftNotice("Draft restored from this browser.");
+        }
 
         const interrupted = value.photos.filter(
           ({ status }) => status === "parsing",
@@ -204,7 +208,9 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
       void persist(draft).then(
-        () => setStorageError(null),
+        () => {
+          if (browserRecoveryEnabled.current) setStorageError(null);
+        },
         (error) =>
           setStorageError(
             `Couldn't save the browser draft: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -509,6 +515,47 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     return { nextErrors, parsed };
   }
 
+  function disableBrowserRecovery(error: unknown) {
+    browserRecoveryEnabled.current = false;
+    const message = error instanceof Error ? error.message : "Unknown error";
+    setStorageError(`Couldn't save the browser draft: ${message}`);
+    setDraftNotice(
+      "Browser recovery stopped working. Keep this tab open until the walk is saved; any earlier browser draft was left untouched.",
+    );
+  }
+
+  async function persistForSave(value: WalkDraft) {
+    try {
+      await persist(value);
+    } catch (error) {
+      disableBrowserRecovery(error);
+    }
+  }
+
+  async function finishSavedWalk(walkId: string) {
+    skipFlush.current = true;
+    setConfirmedWalkId(walkId);
+    if (!browserRecoveryEnabled.current) {
+      previewUrls.current.forEach(URL.revokeObjectURL);
+      previewUrls.current.clear();
+      router.push(`/dashboard/walks/${walkId}`);
+      return;
+    }
+    try {
+      await repository.clear(userId);
+    } catch (error) {
+      setStorageError(
+        `Walk saved, but the browser draft couldn't be cleared: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+      setSaveMessage("The walk is saved. Retry cleanup or open it now.");
+      setSaving(false);
+      return;
+    }
+    previewUrls.current.forEach(URL.revokeObjectURL);
+    previewUrls.current.clear();
+    router.push(`/dashboard/walks/${walkId}`);
+  }
+
   async function save() {
     if (!draft || saving || removingPhotoId || confirmedWalkId) return;
     setSaveMessage(null);
@@ -526,15 +573,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     }
 
     setSaving(true);
-    try {
-      await persist(snapshot);
-    } catch (error) {
-      setStorageError(
-        `Couldn't save a recovery copy: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      setSaving(false);
-      return;
-    }
+    await persistForSave(snapshot);
 
     const supabase = createClient();
     const {
@@ -553,6 +592,26 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       );
       setSaving(false);
       return;
+    }
+
+    if (confirmRestoredDraft.current) {
+      const confirmation = await supabase
+        .from("walks")
+        .select("id")
+        .eq("id", snapshot.id)
+        .maybeSingle();
+      if (confirmation.error) {
+        setSaveMessage(
+          `Couldn't confirm whether this draft was already saved: ${confirmation.error.message}. Keep editing and retry when the connection is stable.`,
+        );
+        setSaving(false);
+        return;
+      }
+      confirmRestoredDraft.current = false;
+      if (confirmation.data) {
+        await finishSavedWalk(snapshot.id);
+        return;
+      }
     }
 
     let working = snapshot;
@@ -577,15 +636,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         ),
       };
       setDraft(working);
-      try {
-        await persist(working);
-      } catch (error) {
-        setStorageError(
-          `Couldn't prepare uploads safely: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-        setSaving(false);
-        return;
-      }
+      await persistForSave(working);
     }
     const uploadResults = await uploadDraftPhotos(
       pending,
@@ -593,15 +644,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       session.access_token,
       setUpload,
     );
-    try {
-      await persist(working);
-    } catch (error) {
-      setStorageError(
-        `Couldn't record upload progress: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      setSaving(false);
-      return;
-    }
+    await persistForSave(working);
 
     const failedUploads = uploadResults.filter(({ error }) => error !== null);
     if (failedUploads.length > 0) {
@@ -658,7 +701,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         .eq("id", working.id)
         .maybeSingle();
       if (confirmation.error || confirmation.data) {
-        await persist(working).catch(() => undefined);
+        await persistForSave(working);
         setSaveMessage(
           "Couldn't confirm the latest save. Nothing was deleted; retry safely when the connection is stable.",
         );
@@ -705,9 +748,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       } catch (error) {
         cleanupPersistenceError =
           error instanceof Error ? error.message : "Unknown error";
-        setStorageError(
-          `Couldn't record cleanup progress: ${cleanupPersistenceError}`,
-        );
+        disableBrowserRecovery(error);
       }
       setSaveMessage(
         `Couldn't save the walk: ${persistenceError.message}. ${cleanupError ? `Uploaded files remain tracked for retry because cleanup failed: ${cleanupError}` : cleanupPersistenceError ? "Cleanup finished, but its local status could not be recorded; retry will safely overwrite the same paths." : uploadedPaths.length > 0 ? "Uploaded files were cleaned up; the draft is ready to retry." : "The draft is ready to retry."}`,
@@ -716,27 +757,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       return;
     }
 
-    skipFlush.current = true;
-    setConfirmedWalkId(working.id);
-    if (!browserRecoveryEnabled.current) {
-      previewUrls.current.forEach(URL.revokeObjectURL);
-      previewUrls.current.clear();
-      router.push(`/dashboard/walks/${working.id}`);
-      return;
-    }
-    try {
-      await repository.clear(userId);
-    } catch (error) {
-      setStorageError(
-        `Walk saved, but the browser draft couldn't be cleared: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-      setSaveMessage("The walk is saved. Retry to clear the local draft safely.");
-      setSaving(false);
-      return;
-    }
-    previewUrls.current.forEach(URL.revokeObjectURL);
-    previewUrls.current.clear();
-    router.push(`/dashboard/walks/${working.id}`);
+    await finishSavedWalk(working.id);
   }
 
   if (!draft && restoreFailure) {
@@ -812,25 +833,30 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
             {storageError}
           </p>
         )}
-        <button
-          type="button"
-          className={primaryButton}
-          disabled={saving}
-          onClick={() => {
-            setSaving(true);
-            void repository.clear(userId).then(
-              () => router.push(`/dashboard/walks/${confirmedWalkId}`),
-              (error) => {
-                setStorageError(
-                  `Couldn't clear the browser draft: ${error instanceof Error ? error.message : "Unknown error"}`,
-                );
-                setSaving(false);
-              },
-            );
-          }}
-        >
-          {saving ? "Cleaning up…" : "Retry browser cleanup"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={primaryButton}
+            disabled={saving}
+            onClick={() => {
+              setSaving(true);
+              void repository.clear(userId).then(
+                () => router.push(`/dashboard/walks/${confirmedWalkId}`),
+                (error) => {
+                  setStorageError(
+                    `Couldn't clear the browser draft: ${error instanceof Error ? error.message : "Unknown error"}`,
+                  );
+                  setSaving(false);
+                },
+              );
+            }}
+          >
+            {saving ? "Cleaning up…" : "Retry browser cleanup"}
+          </button>
+          <Link href={`/dashboard/walks/${confirmedWalkId}`} className={button}>
+            Open saved walk
+          </Link>
+        </div>
       </div>
     );
   }

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 import axe from "axe-core";
 import {
   importPhotoFixtures,
@@ -439,6 +439,148 @@ test("saves a new walk when browser draft recovery is blocked", async ({
   expect(
     await page.evaluate(() => sessionStorage.getItem("idb-open-calls")),
   ).toBe("1");
+});
+
+test("continues saving when browser draft writes stop working", async ({
+  page,
+}) => {
+  await page.goto("/dashboard/new");
+  await page.getByRole("button", { name: "Add note-only stop" }).click();
+  await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("Still in this tab.");
+  await page.getByLabel("Title").fill("Earlier browser copy");
+  await expect.poll(() => storedDraftSummary(page)).toMatchObject({
+    title: "Earlier browser copy",
+    notes: ["Still in this tab."],
+  });
+
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    Object.defineProperty(IDBObjectStore.prototype, "put", {
+      configurable: true,
+      value(this: IDBObjectStore, value: unknown, key?: IDBValidKey) {
+        if (this.name === "walk-drafts") {
+          throw new DOMException("Quota exceeded", "QuotaExceededError");
+        }
+        return key === undefined
+          ? put.call(this, value)
+          : put.call(this, value, key);
+      },
+    });
+  });
+
+  let releaseRpc: () => void = () => {};
+  const rpcGate = new Promise<void>((resolve) => {
+    releaseRpc = resolve;
+  });
+  await page.route("**/rest/v1/rpc/save_walk_draft", async (route) => {
+    await rpcGate;
+    await route.continue();
+  });
+
+  await page.getByLabel("Title").fill("Saved despite quota");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(
+    page.getByText(
+      "Browser recovery stopped working. Keep this tab open until the walk is saved; any earlier browser draft was left untouched.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(/Quota exceeded/)).toBeVisible();
+
+  releaseRpc();
+  await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
+  await expect(
+    page.getByRole("heading", { name: "Saved despite quota" }),
+  ).toBeVisible();
+  await expect.poll(() => storedDraftSummary(page)).toMatchObject({
+    title: "Earlier browser copy",
+    notes: ["Still in this tab."],
+  });
+});
+
+test("restores a local draft while saved-status confirmation is unavailable", async ({
+  page,
+}) => {
+  await page.goto("/dashboard/new");
+  await page.getByRole("button", { name: "Add note-only stop" }).click();
+  await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("Keep editing offline.");
+  await page.getByLabel("Title").fill("Unconfirmed restored draft");
+  await expect.poll(() => storedDraftSummary(page)).toMatchObject({
+    title: "Unconfirmed restored draft",
+  });
+
+  let rpcRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().includes("/rest/v1/rpc/save_walk_draft")) rpcRequests += 1;
+  });
+  const failConfirmation = async (route: Route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "XX000",
+        message: "Forced confirmation failure",
+      }),
+    });
+  };
+  await page.route("**/rest/v1/walks**", failConfirmation);
+
+  await page.reload();
+  await expect(
+    page.getByText(/Draft restored, but its saved status couldn't be confirmed/),
+  ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue("Unconfirmed restored draft");
+  await page.getByLabel("Title").fill("Edited while unconfirmed");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(
+    page.getByText(/Couldn't confirm whether this draft was already saved/),
+  ).toBeVisible();
+  expect(rpcRequests).toBe(0);
+
+  await page.unroute("**/rest/v1/walks**", failConfirmation);
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
+  await expect(
+    page.getByRole("heading", { name: "Edited while unconfirmed" }),
+  ).toBeVisible();
+  expect(rpcRequests).toBe(1);
+});
+
+test("opens a saved walk when browser draft cleanup stays blocked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const remove = IDBObjectStore.prototype.delete;
+    Object.defineProperty(IDBObjectStore.prototype, "delete", {
+      configurable: true,
+      value(this: IDBObjectStore, key: IDBValidKey | IDBKeyRange) {
+        if (this.name === "walk-drafts") {
+          throw new DOMException("Draft deletion blocked", "InvalidStateError");
+        }
+        return remove.call(this, key);
+      },
+    });
+  });
+
+  await page.goto("/dashboard/new");
+  await page.getByRole("button", { name: "Add note-only stop" }).click();
+  await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("Saved safely.");
+  await page.getByLabel("Title").fill("Cleanup blocked walk");
+  await page.getByRole("button", { name: "Save walk" }).click();
+
+  await expect(page.getByRole("heading", { name: "Walk saved" })).toBeVisible();
+  await expect(page.getByText(/Draft deletion blocked/)).toBeVisible();
+  const openSavedWalk = page.getByRole("link", { name: "Open saved walk" });
+  const savedPath = await openSavedWalk.getAttribute("href");
+  expect(savedPath).toMatch(/^\/dashboard\/walks\/[0-9a-f-]+$/);
+  await openSavedWalk.click();
+  await expect(page).toHaveURL(new RegExp(`${savedPath}$`));
+  await expect(
+    page.getByRole("heading", { name: "Cleanup blocked walk" }),
+  ).toBeVisible();
+  await expect.poll(() => storedDraftSummary(page)).not.toBeNull();
+
+  await page.goto("/dashboard/new");
+  await expect(page).toHaveURL(new RegExp(`${savedPath}$`));
 });
 
 test("opens and replays the seeded photo walk without social controls", async ({
