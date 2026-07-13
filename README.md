@@ -13,7 +13,7 @@ The repository is in active development. The landing page, seasonal themes, auth
 
 ## Prerequisites
 
-- Node.js 20.9 or newer
+- Node.js 24 or newer
 - pnpm
 - Docker or another Supabase-compatible container runtime
 
