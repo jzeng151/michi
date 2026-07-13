@@ -104,7 +104,7 @@ pnpm supabase seed buckets --local --yes
 After changing the schema, regenerate the checked-in database types:
 
 ```bash
-pnpm supabase gen types --local --schema public > src/lib/supabase/database.types.ts
+pnpm supabase gen types --local > src/lib/supabase/database.types.ts
 ```
 
 Useful lifecycle commands:

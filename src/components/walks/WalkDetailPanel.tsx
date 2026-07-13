@@ -20,14 +20,14 @@ export function WalkDetailPanel({
   data: WalkDetailData;
   viewerId: string;
 }) {
-  const { walk, ownerName, ownerUsername, media } = data;
+  const { walk, ownerName, ownerUsername, media, pins } = data;
   const isOwner = walk.owner_id === viewerId;
   const isPublic = walk.visibility === "public";
   const [playback, setPlayback] = useState<PlaybackMode | null>(null);
 
   useEffect(() => {
-    setMapDisplay({ kind: "walk", walkId: walk.id, path: walk.path, media });
-  }, [walk.id, walk.path, media]);
+    setMapDisplay({ kind: "walk", walkId: walk.id, path: walk.path, media: pins });
+  }, [walk.id, walk.path, pins]);
 
   return (
     <article className="flex flex-col gap-4 p-4">
@@ -67,30 +67,32 @@ export function WalkDetailPanel({
         <p className="text-sm leading-relaxed">{walk.description}</p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setPlayback("cinematic")}
-          className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
-        >
-          ▶ Play this walk
-        </button>
-        <button
-          type="button"
-          onClick={() => setPlayback("steps")}
-          className="rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash"
-        >
-          Step through stops
-        </button>
-      </div>
+      {walk.path && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPlayback("cinematic")}
+            className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
+          >
+            ▶ Play this walk
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlayback("steps")}
+            className="rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash"
+          >
+            Step through stops
+          </button>
+        </div>
+      )}
 
       <MediaStopList media={media} />
 
-      {playback && (
+      {playback && walk.path && (
         <PlaybackOverlay
           title={walk.title}
           path={walk.path}
-          media={media}
+          media={pins}
           initialMode={playback}
           onExit={() => setPlayback(null)}
         />

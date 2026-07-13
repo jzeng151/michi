@@ -2,6 +2,12 @@ import type { LineString } from "./types";
 
 const EARTH_RADIUS_M = 6_371_000;
 
+export function lineStringFromCoordinates(
+  coordinates: [number, number][],
+): LineString | null {
+  return coordinates.length >= 2 ? { type: "LineString", coordinates } : null;
+}
+
 /** Great-circle distance in meters between two [lng, lat] points. */
 export function haversine(a: [number, number], b: [number, number]): number {
   const toRad = Math.PI / 180;

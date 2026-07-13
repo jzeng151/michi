@@ -44,7 +44,7 @@ export function MediaMarker({
         )}
       </span>
       <span className="sr-only">
-        {index + 1}. {pin.kind === "photo" ? "Photo" : "Audio"}:{" "}
+        {(pin.listIndex ?? index) + 1}. {pin.kind === "photo" ? "Photo" : "Audio"}:{" "}
         {pin.alt ?? pin.caption ?? pin.kind}
       </span>
     </Marker>

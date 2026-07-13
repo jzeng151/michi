@@ -14,24 +14,29 @@ export function WalkMap({
   media,
 }: {
   title: string;
-  path: LineString;
+  path: LineString | null;
   media: MediaPin[];
 }) {
   const mapRef = useRef<MapRef>(null);
-  const [lng, lat] = path.coordinates[0];
+  const coordinates =
+    path?.coordinates ??
+    media.map(({ lng, lat }) => [lng, lat] as [number, number]);
+  const start = coordinates[0];
 
   return (
     <MapCanvas
       ref={mapRef}
       label={`Route map: ${title}`}
-      initialViewState={{ longitude: lng, latitude: lat, zoom: 12 }}
+      initialViewState={
+        start ? { longitude: start[0], latitude: start[1], zoom: 12 } : undefined
+      }
       onLoad={() => {
-        const coords = path.coordinates;
+        if (coordinates.length === 0) return;
         let minLng = Infinity,
           minLat = Infinity,
           maxLng = -Infinity,
           maxLat = -Infinity;
-        for (const [x, y] of coords) {
+        for (const [x, y] of coordinates) {
           minLng = Math.min(minLng, x);
           minLat = Math.min(minLat, y);
           maxLng = Math.max(maxLng, x);
@@ -46,7 +51,7 @@ export function WalkMap({
         );
       }}
     >
-      <RouteLayer path={path} />
+      {path && <RouteLayer path={path} />}
       {media.map((pin, i) => (
         <MediaMarker key={pin.id} pin={pin} index={i} />
       ))}

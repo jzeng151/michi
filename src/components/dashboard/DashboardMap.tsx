@@ -41,7 +41,8 @@ function fitTo(map: MapRef, display: MapDisplay) {
   if (!display || display.kind === "draft") return;
   const coords =
     display.kind === "walk"
-      ? display.path.coordinates
+      ? (display.path?.coordinates ??
+        display.media.map(({ lng, lat }) => [lng, lat] as [number, number]))
       : display.points.map((p) => p.start);
   if (coords.length === 0) return;
   map.fitBounds(boundsOf(coords), {
@@ -109,16 +110,20 @@ export function DashboardMap() {
     >
       {display?.kind === "walk" && (
         <>
-          <RouteLayer path={display.path} />
-          <Marker
-            longitude={display.path.coordinates[0][0]}
-            latitude={display.path.coordinates[0][1]}
-          >
-            <span
-              aria-hidden="true"
-              className="block h-3.5 w-3.5 rounded-full border-2 border-surface bg-accent shadow"
-            />
-          </Marker>
+          {display.path && (
+            <>
+              <RouteLayer path={display.path} />
+              <Marker
+                longitude={display.path.coordinates[0][0]}
+                latitude={display.path.coordinates[0][1]}
+              >
+                <span
+                  aria-hidden="true"
+                  className="block h-3.5 w-3.5 rounded-full border-2 border-surface bg-accent shadow"
+                />
+              </Marker>
+            </>
+          )}
           {display.media.map((pin, i) => (
             <MediaMarker key={pin.id} pin={pin} index={i} onSelect={focusStop} />
           ))}

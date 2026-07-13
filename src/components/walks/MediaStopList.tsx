@@ -1,10 +1,7 @@
-import type { MediaPin } from "@/lib/types";
+import type { MediaStop } from "@/lib/types";
 
-/**
- * Text/list parity for the map's media pins: every pin is reachable and
- * understandable without the map. Items are focus targets for pin clicks.
- */
-export function MediaStopList({ media }: { media: MediaPin[] }) {
+/** Ordered list for every media stop, including photos awaiting placement. */
+export function MediaStopList({ media }: { media: MediaStop[] }) {
   if (media.length === 0) {
     return <p className="text-sm text-ink-muted">No stops on this walk yet.</p>;
   }

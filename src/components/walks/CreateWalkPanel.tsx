@@ -199,17 +199,31 @@ export function CreateWalkPanel() {
         failures.push(`item ${i + 1}: ${uploadError.message}`);
         continue;
       }
-      const [lng, lat] = pathCoords[Math.min(m.pointIndex, pathCoords.length - 1)];
+      const [lng, lat] =
+        pathCoords[Math.min(m.pointIndex, pathCoords.length - 1)];
+      const { data: stop, error: stopError } = await supabase
+        .from("walk_stops")
+        .insert({
+          walk_id: walk.id,
+          kind: m.kind,
+          sort_index: i,
+          lat,
+          lng,
+          note: m.caption || null,
+        })
+        .select("id")
+        .single();
+      if (stopError || !stop) {
+        failures.push(`item ${i + 1}: ${stopError?.message}`);
+        continue;
+      }
       const { error: rowError } = await supabase.from("walk_media").insert({
-        walk_id: walk.id,
-        kind: m.kind,
+        stop_id: stop.id,
         bucket: "walk-media",
         storage_path: storagePath,
         alt_text: m.kind === "photo" ? m.altText : null,
-        caption: m.caption || null,
-        lat,
-        lng,
-        sort_index: i,
+        original_filename: m.originalName,
+        mime_type: m.mime,
       });
       if (rowError) failures.push(`item ${i + 1}: ${rowError.message}`);
     }
