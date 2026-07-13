@@ -6,6 +6,7 @@ import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { usePlaybackTimeline } from "./usePlaybackTimeline";
 import { StepThrough } from "./StepThrough";
+import { isHeicMime } from "@/lib/media-url";
 import type { LineString, MediaPin } from "@/lib/types";
 
 export type PlaybackMode = "cinematic" | "steps";
@@ -148,7 +149,11 @@ export function PlaybackOverlay({
             >
               <figure className="max-w-md rounded-2xl border border-line bg-surface p-3 shadow-xl">
                 {activeStop.kind === "photo" ? (
-                  activeStop.url ? (
+                  isHeicMime(activeStop.mimeType) ? (
+                    <p className="px-6 py-4 text-lg">
+                      HEIC preview unavailable. Original photo retained.
+                    </p>
+                  ) : activeStop.url ? (
                     // eslint-disable-next-line @next/next/no-img-element -- storage URLs
                     <img
                       src={activeStop.url}

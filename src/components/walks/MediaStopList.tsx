@@ -1,4 +1,5 @@
-import type { MediaStop } from "@/lib/types";
+import type { MediaStop } from "../../lib/types";
+import { isHeicMime } from "../../lib/media-url";
 
 /** Ordered list for every media stop, including photos awaiting placement. */
 export function MediaStopList({ media }: { media: MediaStop[] }) {
@@ -22,7 +23,11 @@ export function MediaStopList({ media }: { media: MediaStop[] }) {
               {pin.kind === "photo" ? "Photo" : "Audio note"}
             </p>
             {pin.kind === "photo" ? (
-              pin.url ? (
+              isHeicMime(pin.mimeType) ? (
+                <p className="rounded-lg bg-wash p-3 text-sm">
+                  HEIC preview unavailable. The original photo is retained.
+                </p>
+              ) : pin.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- storage URLs; alt text is user-authored
                 <img
                   src={pin.url}

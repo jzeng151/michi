@@ -41,7 +41,24 @@ test("shows only v1 collections and photo-first walk creation", async ({
     "multiple",
     "",
   );
+
+  await page.getByLabel("Title").fill("Review feedback walk");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(
+    page.getByText("Add at least one photo or two route points before saving."),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/dashboard\/new$/);
+
+  await photos
+    .locator('input[type="file"]')
+    .setInputFiles([importPhotoFixtures[1]]);
+  await expect(page.getByText("1 of 1 photos processed")).toBeVisible();
+  const map = page.getByRole("application", { name: "Map of walks" });
+  await expect(map.locator(".maplibregl-canvas")).toBeVisible();
+  await expect(map.locator(".maplibregl-marker")).toHaveCount(0);
   await page.getByRole("button", { name: "Add point at map center" }).click();
+  await expect(page.getByText("1 manual point")).toBeVisible();
+  await expect(map.locator(".maplibregl-marker")).toHaveCount(1);
   await expect(page.locator("body")).not.toContainText(/\b(?:GPS|audio)\b/i);
 });
 

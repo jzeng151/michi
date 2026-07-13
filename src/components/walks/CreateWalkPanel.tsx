@@ -96,6 +96,7 @@ export function CreateWalkPanel() {
     setMapDisplay({
       kind: "draft",
       coordinates: pathCoords,
+      waypoints: drawPoints.length > 0 ? drawPoints : photoPoints,
       media: staged.flatMap((m, listIndex) => {
         const point = locationOf(m, drawPoints);
         return m.status === "ready" && point
@@ -104,6 +105,7 @@ export function CreateWalkPanel() {
                 id: m.id,
                 kind: "photo" as const,
                 url: m.previewUrl,
+                mimeType: m.mime,
                 alt: m.altText || null,
                 caption: m.caption || null,
                 lng: point[0],
@@ -115,7 +117,7 @@ export function CreateWalkPanel() {
       }),
       position: null,
     });
-  }, [drawPoints, pathCoords, staged]);
+  }, [drawPoints, pathCoords, photoPoints, staged]);
 
   useEffect(
     () => () => {
@@ -240,6 +242,8 @@ export function CreateWalkPanel() {
       nextErrors.import = "Wait for photo metadata to finish before saving.";
     } else if (staged.some((item) => item.status === "error")) {
       nextErrors.import = "Remove failed files before saving.";
+    } else if (ready.length === 0 && pathCoords.length < 2) {
+      nextErrors.import = "Add at least one photo or two route points before saving.";
     }
     for (const m of ready) {
       if (!photoAltSchema.safeParse(m.altText).success) {
@@ -588,10 +592,12 @@ export function CreateWalkPanel() {
                 );
               })}
             </ul>
-            {errors.import && (
-              <p className="text-sm text-accent-text">{errors.import}</p>
-            )}
           </>
+        )}
+        {errors.import && (
+          <p role="alert" className="text-sm text-accent-text">
+            {errors.import}
+          </p>
         )}
       </section>
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { fetchWalkDetail } from "@/lib/walks";
+import { isHeicMime } from "@/lib/media-url";
 import { formatDate, formatDistance } from "@/lib/format";
 import { WalkMap } from "@/components/map/WalkMap";
 import { MediaStopList } from "@/components/walks/MediaStopList";
@@ -41,7 +42,9 @@ export default async function PublicWalkPage({
   if (!data) notFound();
 
   const { walk, ownerName, media, pins } = data;
-  const lockedMedia = media.some((m) => m.url === null);
+  const lockedMedia = media.some(
+    (m) => m.url === null && !isHeicMime(m.mimeType),
+  );
 
   return (
     <div className="min-h-dvh bg-canvas">

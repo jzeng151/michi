@@ -150,7 +150,7 @@ export function DashboardMap() {
       {isDraft && (
         <>
           {draftLine && <RouteLayer path={draftLine} />}
-          {display.coordinates.map(([lng, lat], i) => (
+          {display.waypoints.map(([lng, lat], i) => (
             <Marker key={`wp-${i}`} longitude={lng} latitude={lat}>
               <span
                 aria-hidden="true"
