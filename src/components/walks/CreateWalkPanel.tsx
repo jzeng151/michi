@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -8,20 +8,48 @@ import {
   setMapClickHandler,
   setMapDisplay,
 } from "@/components/map/display-store";
-import { MediaCapture, type CapturedMedia } from "@/components/media/MediaCapture";
-import { pathDistance } from "@/lib/geo";
+import { MediaCapture } from "@/components/media/MediaCapture";
+import { lineStringFromCoordinates, pathDistance } from "@/lib/geo";
 import { extForMime } from "@/lib/media-url";
+import {
+  hasBrowserPreview,
+  parsePhotoBatch,
+  photoMime,
+  sortPhotoImports,
+  type PhotoImportResult,
+} from "@/lib/photo-import";
 import { createClient } from "@/lib/supabase/client";
 import type { Json } from "@/lib/supabase/database.types";
 import { formatDistance } from "@/lib/format";
 import { photoAltSchema, walkFormSchema } from "@/lib/validation";
 
-type StagedMedia = CapturedMedia & {
+type StagedMedia = {
   id: string;
+  file: File;
+  originalName: string;
+  mime: string | null;
+  previewUrl: string | null;
+  originalIndex: number;
+  status: "parsing" | "ready" | "error";
+  error: string | null;
+  capturedAt: string | null;
+  lat: number | null;
+  lng: number | null;
+  orientation: number | null;
   altText: string;
   caption: string;
-  pointIndex: number;
+  pointIndex: number | null;
 };
+
+function locationOf(
+  media: StagedMedia,
+  points: [number, number][],
+): [number, number] | null {
+  if (media.pointIndex !== null) return points[media.pointIndex] ?? null;
+  return media.lat !== null && media.lng !== null
+    ? [media.lng, media.lat]
+    : null;
+}
 
 const button =
   "rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash disabled:opacity-50 disabled:hover:bg-transparent";
@@ -41,8 +69,20 @@ export function CreateWalkPanel() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const nextImportIndex = useRef(0);
+  const previewUrls = useRef(new Set<string>());
 
-  const pathCoords = drawPoints;
+  const importing = staged.some((item) => item.status === "parsing");
+  const photoPoints = useMemo(
+    () =>
+      staged.flatMap((item) => {
+        if (item.status !== "ready") return [];
+        const point = locationOf(item, drawPoints);
+        return point ? [point] : [];
+      }),
+    [drawPoints, staged],
+  );
+  const pathCoords = drawPoints.length >= 2 ? drawPoints : photoPoints;
 
   // Map clicks append waypoints.
   useEffect(() => {
@@ -56,20 +96,34 @@ export function CreateWalkPanel() {
     setMapDisplay({
       kind: "draft",
       coordinates: pathCoords,
-      media: staged.map((m) => ({
-        id: m.id,
-        kind: m.kind,
-        url: m.previewUrl,
-        alt: m.altText || null,
-        caption: m.caption || null,
-        lng: pathCoords[m.pointIndex]?.[0] ?? 0,
-        lat: pathCoords[m.pointIndex]?.[1] ?? 0,
-      })),
+      media: staged.flatMap((m, listIndex) => {
+        const point = locationOf(m, drawPoints);
+        return m.status === "ready" && point
+          ? [
+              {
+                id: m.id,
+                kind: "photo" as const,
+                url: m.previewUrl,
+                alt: m.altText || null,
+                caption: m.caption || null,
+                lng: point[0],
+                lat: point[1],
+                listIndex,
+              },
+            ]
+          : [];
+      }),
       position: null,
     });
-  }, [pathCoords, staged]);
+  }, [drawPoints, pathCoords, staged]);
 
-  useEffect(() => () => setMapDisplay(null), []);
+  useEffect(
+    () => () => {
+      setMapDisplay(null);
+      previewUrls.current.forEach(URL.revokeObjectURL);
+    },
+    [],
+  );
 
   const distanceM = useMemo(() => pathDistance(pathCoords), [pathCoords]);
 
@@ -85,26 +139,68 @@ export function CreateWalkPanel() {
 
   const removePoint = useCallback((index: number) => {
     setDrawPoints((pts) => pts.filter((_, i) => i !== index));
-    // Media pinned after the removed point shifts down one; save-time and
-    // render-time clamping handles the last-point edge.
     setStaged((items) =>
-      items.map((m) =>
-        m.pointIndex > index ? { ...m, pointIndex: m.pointIndex - 1 } : m,
-      ),
+      items.map((m) => {
+        if (m.pointIndex === null || m.pointIndex < index) return m;
+        return {
+          ...m,
+          pointIndex: m.pointIndex === index ? null : m.pointIndex - 1,
+        };
+      }),
     );
   }, []);
 
-  function onCapture(media: CapturedMedia) {
-    setStaged((items) => [
-      ...items,
-      {
-        ...media,
-        id: crypto.randomUUID(),
+  function onPhotos(files: File[]) {
+    const startIndex = nextImportIndex.current;
+    nextImportIndex.current += files.length;
+    const ids = files.map(() => crypto.randomUUID());
+    const placeholders = files.map((file, position): StagedMedia => {
+      const mime = photoMime(file);
+      const previewUrl = hasBrowserPreview(mime)
+        ? URL.createObjectURL(file)
+        : null;
+      if (previewUrl) previewUrls.current.add(previewUrl);
+      return {
+        id: ids[position],
+        file,
+        originalName: file.name,
+        mime,
+        previewUrl,
+        originalIndex: startIndex + position,
+        status: "parsing",
+        error: null,
+        capturedAt: null,
+        lat: null,
+        lng: null,
+        orientation: null,
         altText: "",
         caption: "",
-        pointIndex: Math.max(pathCoords.length - 1, 0),
-      },
-    ]);
+        pointIndex: null,
+      };
+    });
+    setStaged((items) => sortPhotoImports([...items, ...placeholders]));
+
+    void parsePhotoBatch(files, startIndex, (result: PhotoImportResult) => {
+      const id = ids[result.originalIndex - startIndex];
+      setStaged((items) =>
+        sortPhotoImports(
+          items.map((item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  mime: result.mime,
+                  status: result.status,
+                  error: result.error,
+                  capturedAt: result.capturedAt,
+                  lat: result.lat,
+                  lng: result.lng,
+                  orientation: result.orientation,
+                }
+              : item,
+          ),
+        ),
+      );
+    });
   }
 
   function updateStaged(id: string, patch: Partial<StagedMedia>) {
@@ -116,7 +212,10 @@ export function CreateWalkPanel() {
   function removeStaged(id: string) {
     setStaged((items) => {
       const item = items.find((m) => m.id === id);
-      if (item) URL.revokeObjectURL(item.previewUrl);
+      if (item?.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+        previewUrls.current.delete(item.previewUrl);
+      }
       return items.filter((m) => m.id !== id);
     });
   }
@@ -124,6 +223,7 @@ export function CreateWalkPanel() {
   async function save() {
     setSaveMessage(null);
     const nextErrors: Record<string, string> = {};
+    const ready = staged.filter((item) => item.status === "ready");
 
     const parsed = walkFormSchema.safeParse({
       title,
@@ -136,11 +236,13 @@ export function CreateWalkPanel() {
         nextErrors[String(issue.path[0])] = issue.message;
       }
     }
-    if (pathCoords.length < 2) {
-      nextErrors.path = "A walk needs at least two points.";
+    if (importing) {
+      nextErrors.import = "Wait for photo metadata to finish before saving.";
+    } else if (staged.some((item) => item.status === "error")) {
+      nextErrors.import = "Remove failed files before saving.";
     }
-    for (const m of staged) {
-      if (m.kind === "photo" && !photoAltSchema.safeParse(m.altText).success) {
+    for (const m of ready) {
+      if (!photoAltSchema.safeParse(m.altText).success) {
         nextErrors[`alt-${m.id}`] =
           "Describe this photo for people who can't see it.";
       }
@@ -160,6 +262,7 @@ export function CreateWalkPanel() {
     }
 
     const values = parsed.data!;
+    const path = lineStringFromCoordinates(pathCoords);
     const { data: walk, error: walkError } = await supabase
       .from("walks")
       .insert({
@@ -167,10 +270,7 @@ export function CreateWalkPanel() {
         title: values.title,
         region: values.region || null,
         description: values.description || null,
-        path: {
-          type: "LineString",
-          coordinates: pathCoords,
-        } as unknown as Json,
+        path: path as unknown as Json,
         distance_m: distanceM,
         duration_s: null,
         visibility: values.visibility,
@@ -185,7 +285,8 @@ export function CreateWalkPanel() {
     }
 
     const failures: string[] = [];
-    for (const [i, m] of staged.entries()) {
+    for (const [i, m] of ready.entries()) {
+      if (!m.mime) continue;
       const ext = extForMime(m.mime);
       if (!ext) {
         failures.push(`item ${i + 1}: unsupported type ${m.mime}`);
@@ -199,16 +300,16 @@ export function CreateWalkPanel() {
         failures.push(`item ${i + 1}: ${uploadError.message}`);
         continue;
       }
-      const [lng, lat] =
-        pathCoords[Math.min(m.pointIndex, pathCoords.length - 1)];
+      const [lng, lat] = locationOf(m, drawPoints) ?? [null, null];
       const { data: stop, error: stopError } = await supabase
         .from("walk_stops")
         .insert({
           walk_id: walk.id,
-          kind: m.kind,
+          kind: "photo",
           sort_index: i,
           lat,
           lng,
+          captured_at: m.capturedAt,
           note: m.caption || null,
         })
         .select("id")
@@ -221,14 +322,13 @@ export function CreateWalkPanel() {
         stop_id: stop.id,
         bucket: "walk-media",
         storage_path: storagePath,
-        alt_text: m.kind === "photo" ? m.altText : null,
+        alt_text: m.altText,
         original_filename: m.originalName,
         mime_type: m.mime,
+        orientation: m.orientation,
       });
       if (rowError) failures.push(`item ${i + 1}: ${rowError.message}`);
     }
-
-    staged.forEach((m) => URL.revokeObjectURL(m.previewUrl));
 
     if (failures.length > 0) {
       setSaveMessage(
@@ -237,6 +337,8 @@ export function CreateWalkPanel() {
       setSaving(false);
       return;
     }
+    previewUrls.current.forEach(URL.revokeObjectURL);
+    previewUrls.current.clear();
     router.push(`/dashboard/walks/${walk.id}`);
   }
 
@@ -252,8 +354,8 @@ export function CreateWalkPanel() {
 
       <section aria-label="Waypoints" className="flex flex-col gap-3">
         <p className="text-sm text-ink-muted">
-          Tap the map to add points along your route, or use the button below
-          to drop a point at the map&apos;s center crosshair.
+          Photo locations build the route automatically. Tap the map to add or
+          adjust points, or use the map&apos;s center crosshair.
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={button} onClick={requestCenterPoint}>
@@ -263,7 +365,7 @@ export function CreateWalkPanel() {
             type="button"
             className={button}
             disabled={drawPoints.length === 0}
-            onClick={() => setDrawPoints((p) => p.slice(0, -1))}
+            onClick={() => removePoint(drawPoints.length - 1)}
           >
             Undo last
           </button>
@@ -271,16 +373,21 @@ export function CreateWalkPanel() {
             type="button"
             className={button}
             disabled={drawPoints.length === 0}
-            onClick={() => setDrawPoints([])}
+            onClick={() => {
+              setDrawPoints([]);
+              setStaged((items) =>
+                items.map((item) => ({ ...item, pointIndex: null })),
+              );
+            }}
           >
             Clear
           </button>
         </div>
         <p className="text-sm" aria-live="polite">
-          {drawPoints.length} point{drawPoints.length === 1 ? "" : "s"} ·{" "}
-          {formatDistance(distanceM)}
+          {drawPoints.length} manual point{drawPoints.length === 1 ? "" : "s"}
+          {" · "}
+          {formatDistance(distanceM)} route
         </p>
-        {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
         {drawPoints.length > 0 && (
           <ol className="flex max-h-48 flex-col gap-1 overflow-y-auto">
             {drawPoints.map(([lng, lat], i) => (
@@ -330,86 +437,161 @@ export function CreateWalkPanel() {
 
       <section aria-label="Photos" className="flex flex-col gap-3">
         <h2 className="font-medium">Memories along the way</h2>
-        {pathCoords.length === 0 ? (
-          <p className="text-sm text-ink-muted">
-            Add route points first, then attach photos to them.
-          </p>
-        ) : (
-          <MediaCapture onCapture={onCapture} showAudio={false} />
-        )}
+        <MediaCapture
+          onPhotos={onPhotos}
+          showAudio={false}
+          disabled={saving || importing}
+        />
         {staged.length > 0 && (
-          <ul className="flex flex-col gap-3">
-            {staged.map((m) => (
-              <li
-                key={m.id}
-                className="flex flex-col gap-2 rounded-xl border border-line bg-canvas p-3"
-              >
-                {m.kind === "photo" ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
-                  <img
-                    src={m.previewUrl}
-                    alt={m.altText || "Photo awaiting description"}
-                    className="max-h-40 w-full rounded-lg object-cover"
-                  />
-                ) : (
-                  <audio controls src={m.previewUrl} className="w-full" />
-                )}
-                {m.kind === "photo" && (
-                  <label className="flex flex-col gap-1 text-sm">
-                    Photo description (required)
-                    <input
-                      value={m.altText}
-                      onChange={(e) =>
-                        updateStaged(m.id, { altText: e.target.value })
-                      }
-                      className={inputClass}
-                      aria-invalid={Boolean(errors[`alt-${m.id}`])}
-                    />
-                    {errors[`alt-${m.id}`] && (
-                      <span className="text-accent-text">
-                        {errors[`alt-${m.id}`]}
-                      </span>
-                    )}
-                  </label>
-                )}
-                <label className="flex flex-col gap-1 text-sm">
-                  Caption (optional)
-                  <input
-                    value={m.caption}
-                    onChange={(e) =>
-                      updateStaged(m.id, { caption: e.target.value })
-                    }
-                    className={inputClass}
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-sm">
-                  Location on route
-                  <select
-                    value={Math.min(m.pointIndex, pathCoords.length - 1)}
-                    onChange={(e) =>
-                      updateStaged(m.id, {
-                        pointIndex: Number(e.target.value),
-                      })
-                    }
-                    className={inputClass}
+          <>
+            <p className="text-sm" aria-live="polite">
+              {staged.filter((item) => item.status !== "parsing").length} of{" "}
+              {staged.length} photos processed
+            </p>
+            <ul aria-label="Import queue" className="flex flex-col gap-3">
+              {staged.map((m) => {
+                const location = locationOf(m, drawPoints);
+                return (
+                  <li
+                    key={m.id}
+                    data-status={m.status}
+                    className="flex flex-col gap-2 rounded-xl border border-line bg-canvas p-3"
                   >
-                    {pathCoords.map((_, i) => (
-                      <option key={i} value={i}>
-                        Point {i + 1} of {pathCoords.length}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  className="self-start text-sm text-ink-muted underline underline-offset-4 hover:text-ink"
-                  onClick={() => removeStaged(m.id)}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
+                    <div className="flex items-start justify-between gap-3 text-sm">
+                      <span className="min-w-0 truncate font-medium">
+                        {m.originalName}
+                      </span>
+                      <span className="shrink-0 text-ink-muted">
+                        {m.status === "parsing"
+                          ? "Reading metadata…"
+                          : m.status === "error"
+                            ? "Failed"
+                            : location
+                              ? "Located"
+                              : "Needs placement"}
+                      </span>
+                    </div>
+
+                    {m.status === "error" ? (
+                      <p
+                        role="alert"
+                        className="break-words text-sm text-accent-text"
+                      >
+                        {m.error}
+                      </p>
+                    ) : m.previewUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+                      <img
+                        src={m.previewUrl}
+                        alt={m.altText || "Photo awaiting description"}
+                        loading="lazy"
+                        decoding="async"
+                        className="max-h-40 w-full rounded-lg object-cover"
+                      />
+                    ) : (
+                      <p className="rounded-lg bg-wash p-4 text-sm text-ink-muted">
+                        HEIC preview unavailable; metadata and the original file
+                        are retained.
+                      </p>
+                    )}
+
+                    {m.status === "ready" && (
+                      <>
+                        {m.capturedAt && (
+                          <p className="text-xs text-ink-muted">
+                            Captured{" "}
+                            <time dateTime={m.capturedAt}>
+                              {new Date(m.capturedAt).toLocaleString()}
+                            </time>
+                          </p>
+                        )}
+                        <p className="text-xs text-ink-muted">
+                          {location
+                            ? `${location[1].toFixed(5)}, ${location[0].toFixed(5)}`
+                            : "No location metadata found."}
+                        </p>
+                        <label className="flex flex-col gap-1 text-sm">
+                          Photo description (required)
+                          <input
+                            value={m.altText}
+                            onChange={(e) =>
+                              updateStaged(m.id, { altText: e.target.value })
+                            }
+                            className={inputClass}
+                            required
+                            aria-invalid={Boolean(errors[`alt-${m.id}`])}
+                            aria-errormessage={
+                              errors[`alt-${m.id}`]
+                                ? `alt-error-${m.id}`
+                                : undefined
+                            }
+                          />
+                          {errors[`alt-${m.id}`] && (
+                            <span
+                              id={`alt-error-${m.id}`}
+                              className="text-accent-text"
+                            >
+                              {errors[`alt-${m.id}`]}
+                            </span>
+                          )}
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm">
+                          Caption (optional)
+                          <input
+                            value={m.caption}
+                            onChange={(e) =>
+                              updateStaged(m.id, { caption: e.target.value })
+                            }
+                            className={inputClass}
+                          />
+                        </label>
+                        {drawPoints.length > 0 && (
+                          <label className="flex flex-col gap-1 text-sm">
+                            Location on route
+                            <select
+                              value={m.pointIndex ?? ""}
+                              onChange={(e) =>
+                                updateStaged(m.id, {
+                                  pointIndex:
+                                    e.target.value === ""
+                                      ? null
+                                      : Number(e.target.value),
+                                })
+                              }
+                              className={inputClass}
+                            >
+                              <option value="">
+                                {m.lat !== null
+                                  ? "Photo metadata location"
+                                  : "Needs placement"}
+                              </option>
+                              {drawPoints.map((_, i) => (
+                                <option key={i} value={i}>
+                                  Point {i + 1} of {drawPoints.length}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${m.originalName}`}
+                      className="min-h-11 self-start text-sm text-ink-muted underline underline-offset-4 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={m.status === "parsing"}
+                      onClick={() => removeStaged(m.id)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            {errors.import && (
+              <p className="text-sm text-accent-text">{errors.import}</p>
+            )}
+          </>
         )}
       </section>
 
@@ -482,7 +664,7 @@ export function CreateWalkPanel() {
       <button
         type="button"
         className={primaryButton}
-        disabled={saving}
+        disabled={saving || importing}
         onClick={save}
       >
         {saving ? "Saving…" : "Save walk"}

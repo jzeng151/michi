@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import axe from "axe-core";
+import { importPhotoFixtures } from "./photo-fixtures";
 
 const walkId = "10000000-0000-4000-8000-000000000002";
 const walkPath = `/dashboard/walks/${walkId}`;
@@ -32,9 +33,35 @@ test("shows only v1 collections and photo-first walk creation", async ({
   ).toBeVisible();
   const photos = page.getByRole("region", { name: "Photos" });
   await expect(photos).toBeVisible();
+  await expect(
+    photos.getByRole("group", { name: "Photo import" }),
+  ).toContainText("Drop photos here");
+  await expect(photos.getByRole("button", { name: "Choose photos" })).toBeVisible();
+  await expect(photos.locator('input[type="file"]')).toHaveAttribute(
+    "multiple",
+    "",
+  );
   await page.getByRole("button", { name: "Add point at map center" }).click();
-  await expect(photos.getByText("Add photo")).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/\b(?:GPS|audio)\b/i);
+});
+
+test("imports a photo batch without losing failed files", async ({ page }) => {
+  await page.goto("/dashboard/new");
+
+  await page.locator('input[type="file"]').setInputFiles(importPhotoFixtures);
+
+  const queue = page.getByRole("list", { name: "Import queue" });
+  const items = queue.getByRole("listitem");
+  await expect(items).toHaveCount(3);
+  await expect(page.getByText("3 of 3 photos processed")).toBeVisible();
+  await expect(items.nth(0)).toContainText("located.jpg");
+  await expect(items.nth(0)).toContainText("Located");
+  await expect(items.nth(1)).toContainText("needs-placement.jpg");
+  await expect(items.nth(1)).toContainText("Needs placement");
+  await expect(items.nth(2)).toContainText("corrupt.jpg");
+  await expect(items.nth(2)).toContainText("Failed");
+  await expect(items.nth(2)).toContainText("Couldn’t read metadata");
+  await expectNoHighImpactViolations(page);
 });
 
 test("opens and replays the seeded photo walk without social controls", async ({

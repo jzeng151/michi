@@ -9,6 +9,8 @@ export function curatedUrl(path: string): string {
 
 const MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "image/png": "png",
   "image/webp": "webp",
   "audio/webm": "webm",
