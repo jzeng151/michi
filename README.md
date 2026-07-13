@@ -2,7 +2,7 @@
 
 Michi turns the photos from a walk into a map-based memory: import a camera roll, place the moments that need help, replay the route in time order, and reveal stories from the path beneath your own.
 
-The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, media storage, and an initial replay experience are working. Batch EXIF import, resilient drafts, complete time-based replay, and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
+The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, media storage, bounded EXIF batch import, and an initial replay experience are working. Resilient drafts, complete time-based replay, and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
 
 ## Stack
 

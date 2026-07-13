@@ -130,6 +130,8 @@ public = false
 file_size_limit = "25MiB"
 allowed_mime_types = [
   "image/jpeg",
+  "image/heic",
+  "image/heif",
   "image/png",
   "image/webp",
   "audio/webm",

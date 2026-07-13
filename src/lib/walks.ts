@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
 import { lineStringFromCoordinates, pathDistance } from "./geo";
-import { resolveMediaUrls } from "./media-url";
+import { isHeicMime, resolveMediaUrls } from "./media-url";
 import type {
   LineString,
   MediaPin,
@@ -16,7 +16,7 @@ type Client = SupabaseClient<Database>;
 
 // Single literal (not concatenated) so supabase-js can parse it at the type level.
 const SUMMARY_SELECT =
-  "id, owner_id, title, description, region, path, distance_m, duration_s, visibility, is_curated, created_at, walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text))";
+  "id, owner_id, title, description, region, path, distance_m, duration_s, visibility, is_curated, created_at, walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))";
 
 type StopWithMedia = WalkStopRow & { walk_media: MediaRow | null };
 type SummaryRow = WalkRow & {
@@ -55,7 +55,12 @@ function distanceOf(
 }
 
 function coverOf(stops: StopWithMedia[]): MediaRow | null {
-  return stops.find((stop) => stop.kind === "photo" && stop.walk_media)
+  return stops.find(
+    (stop) =>
+      stop.kind === "photo" &&
+      stop.walk_media &&
+      !isHeicMime(stop.walk_media.mime_type),
+  )
     ?.walk_media ?? null;
 }
 
@@ -140,7 +145,7 @@ export async function fetchWalkDetail(
   const { data } = await supabase
     .from("walks")
     .select(
-      "*, profiles!walks_owner_id_fkey(username, display_name), walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text))",
+      "*, profiles!walks_owner_id_fkey(username, display_name), walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))",
     )
     .eq("id", id)
     .maybeSingle();
@@ -158,7 +163,10 @@ export async function fetchWalkDetail(
   const media: MediaStop[] = photoStops.map((stop) => ({
     id: stop.walk_media!.id,
     kind: "photo",
-    url: urls.get(stop.walk_media!.storage_path) ?? null,
+    url: isHeicMime(stop.walk_media!.mime_type)
+      ? null
+      : (urls.get(stop.walk_media!.storage_path) ?? null),
+    mimeType: stop.walk_media!.mime_type,
     alt: stop.walk_media!.alt_text,
     caption: stop.note,
     lat: stop.lat,

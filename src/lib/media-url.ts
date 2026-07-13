@@ -9,6 +9,8 @@ export function curatedUrl(path: string): string {
 
 const MIME_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
+  "image/heic": "heic",
+  "image/heif": "heif",
   "image/png": "png",
   "image/webp": "webp",
   "audio/webm": "webm",
@@ -19,6 +21,11 @@ const MIME_EXT: Record<string, string> = {
 
 export function extForMime(mime: string): string | null {
   return MIME_EXT[mime.split(";")[0]] ?? null;
+}
+
+export function isHeicMime(mime: string | null): boolean {
+  const type = mime?.toLowerCase().split(";", 1)[0].trim();
+  return type === "image/heic" || type === "image/heif";
 }
 
 /**

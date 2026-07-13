@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { pathDistance } from "./geo";
+import { isHeicMime } from "./media-url";
 import { fetchBrowseLists, fetchWalkDetail } from "./walks";
 
 it("keeps unplaced media and measures a route derived from placed stops", async () => {
@@ -7,11 +8,12 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     [135, 35],
     [135.001, 35.001],
   ];
-  const media = (id: string) => ({
+  const media = (id: string, mimeType = "image/webp") => ({
     id,
     bucket: "curated",
     storage_path: `${id}.webp`,
     alt_text: id,
+    mime_type: mimeType,
   });
   const row = {
     id: "walk",
@@ -34,7 +36,7 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
         lat: null,
         lng: null,
         note: "Needs placement",
-        walk_media: media("unplaced"),
+        walk_media: media("unplaced", "image/heic"),
       },
       ...coordinates.map(([lng, lat], index) => ({
         id: `stop-${index + 2}`,
@@ -43,7 +45,10 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
         lat,
         lng,
         note: null,
-        walk_media: media(`placed-${index + 1}`),
+        walk_media: media(
+          `placed-${index + 1}`,
+          index === 0 ? "image/heic" : "image/webp",
+        ),
       })),
     ],
   };
@@ -72,8 +77,21 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
   ]);
   expect(detail?.pins.map(({ id }) => id)).toEqual(["placed-1", "placed-2"]);
   expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([1, 2]);
+  expect(detail?.media[0]).toMatchObject({
+    mimeType: "image/heic",
+    url: null,
+  });
+  expect(detail?.pins[0]).toMatchObject({
+    mimeType: "image/heic",
+    url: null,
+  });
+  expect(lists.mine[0].cover?.alt).toBe("placed-2");
   expect(detail?.walk.path?.coordinates).toEqual(coordinates);
   expect(detail?.walk.distance_m).toBe(pathDistance(coordinates));
   expect(lists.curated[0].distanceM).toBe(pathDistance(coordinates));
   expect(lists.mine[0].distanceM).toBe(pathDistance(coordinates));
+  expect(isHeicMime("image/heic")).toBe(true);
+  expect(isHeicMime("image/heif; charset=binary")).toBe(true);
+  expect(isHeicMime("image/webp")).toBe(false);
+  expect(isHeicMime(null)).toBe(false);
 });

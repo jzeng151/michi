@@ -5,6 +5,7 @@ import { type MapRef } from "react-map-gl/maplibre";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { MediaMarker } from "@/components/map/MediaMarker";
+import { isHeicMime } from "@/lib/media-url";
 import type { LineString, MediaPin } from "@/lib/types";
 
 /**
@@ -88,7 +89,11 @@ export function StepThrough({
               {stop!.kind === "photo" ? "Photo" : "Audio note"}
             </p>
             {stop!.kind === "photo" ? (
-              stop!.url ? (
+              isHeicMime(stop!.mimeType) ? (
+                <p className="rounded-lg bg-wash p-3 text-sm">
+                  HEIC preview unavailable. Original photo retained.
+                </p>
+              ) : stop!.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- storage URLs
                 <img
                   src={stop!.url}

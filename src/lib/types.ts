@@ -22,6 +22,7 @@ export type MediaRow = {
   bucket: "walk-media" | "curated";
   storage_path: string;
   alt_text: string | null;
+  mime_type: string | null;
 };
 
 export type WalkStopRow = {
@@ -38,6 +39,7 @@ export type MediaStop = {
   id: string;
   kind: "photo" | "audio";
   url: string | null;
+  mimeType: string | null;
   alt: string | null;
   caption: string | null;
   lat: number | null;

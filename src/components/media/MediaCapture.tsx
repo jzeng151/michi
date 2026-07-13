@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { PHOTO_ACCEPT } from "@/lib/photo-import";
 
 export type CapturedMedia = {
   kind: "photo" | "audio";
@@ -23,11 +24,15 @@ function pickAudioMime(): string | null {
 }
 
 export function MediaCapture({
+  onPhotos,
   onCapture,
   showAudio = true,
+  disabled = false,
 }: {
-  onCapture: (media: CapturedMedia) => void;
+  onPhotos: (files: File[]) => void;
+  onCapture?: (media: CapturedMedia) => void;
   showAudio?: boolean;
+  disabled?: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -40,16 +45,16 @@ export function MediaCapture({
     pickAudioMime() !== null;
 
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    onCapture({
-      kind: "photo",
-      file,
-      originalName: file.name,
-      mime: file.type || "image/jpeg",
-      previewUrl: URL.createObjectURL(file),
-    });
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) onPhotos(files);
     e.target.value = ""; // allow re-selecting the same file
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    if (disabled) return;
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) onPhotos(files);
   }
 
   async function toggleAudio() {
@@ -74,7 +79,7 @@ export function MediaCapture({
         // Store the recorder's actual output type (iOS reports audio/mp4).
         const type = recorder.mimeType.split(";")[0];
         const blob = new Blob(chunks, { type });
-        onCapture({
+        onCapture?.({
           kind: "audio",
           file: blob,
           originalName: null,
@@ -93,28 +98,39 @@ export function MediaCapture({
   }
 
   const buttonClass =
-    "rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash";
+    "min-h-11 rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash disabled:opacity-50";
 
   return (
-    <div className="flex flex-col gap-2">
+    <div
+      className="flex flex-col gap-2 rounded-xl border border-dashed border-line p-4"
+      role="group"
+      aria-label="Photo import"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
+      <p className="text-sm text-ink-muted">
+        Drop photos here or choose them from your camera roll.
+      </p>
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           className={buttonClass}
+          disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
         >
-          📷 Add photo
+          📷 Choose photos
         </button>
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp"
-          capture="environment"
-          className="sr-only"
-          aria-label="Add photo"
+          accept={PHOTO_ACCEPT}
+          multiple
+          disabled={disabled}
+          hidden
           onChange={onPhotoChange}
         />
         {showAudio &&
+          onCapture &&
           (audioSupported ? (
             <button
               type="button"
@@ -130,7 +146,7 @@ export function MediaCapture({
             </p>
           ))}
       </div>
-      {showAudio && (
+      {showAudio && onCapture && (
         <div aria-live="polite">
           {recording && (
             <p className="text-sm text-accent-text">Recording audio…</p>

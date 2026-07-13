@@ -13,6 +13,7 @@ export type MapDisplay =
   | {
       kind: "draft";
       coordinates: [number, number][];
+      waypoints: [number, number][];
       media: MediaPin[];
       /** GPS mode: current fix to follow. */
       position: [number, number] | null;
