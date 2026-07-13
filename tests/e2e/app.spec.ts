@@ -419,7 +419,7 @@ test("saves a new walk when browser draft recovery is blocked", async ({
     .click();
   await expect(
     page.getByText(
-      "Browser recovery is unavailable. This walk only lasts in this tab until saved.",
+      "Started a new walk without browser recovery. The existing browser draft was left untouched.",
     ),
   ).toBeVisible();
 
@@ -501,6 +501,8 @@ test("restores a local draft while saved-status confirmation is unavailable", as
   page,
 }) => {
   await page.goto("/dashboard/new");
+  const [photo] = await importUnplacedPhotos(page, 1);
+  await fillPhotoDescriptions(page, [photo], "Unconfirmed photo");
   await page.getByRole("button", { name: "Add note-only stop" }).click();
   await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("Keep editing offline.");
   await page.getByLabel("Title").fill("Unconfirmed restored draft");
@@ -529,6 +531,14 @@ test("restores a local draft while saved-status confirmation is unavailable", as
     page.getByText(/Draft restored, but its saved status couldn't be confirmed/),
   ).toBeVisible();
   await expect(page.getByLabel("Title")).toHaveValue("Unconfirmed restored draft");
+  await expect(
+    photoCard(page, photo.name).getByRole("button", {
+      name: `Remove ${photo.name}`,
+    }),
+  ).toHaveCount(0);
+  await expect(photoCard(page, photo.name)).toContainText(
+    "Photo removal is disabled while this draft may belong to a saved walk.",
+  );
   await page.getByLabel("Title").fill("Edited while unconfirmed");
   await page.getByRole("button", { name: "Save walk" }).click();
   await expect(
@@ -580,7 +590,28 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
   await expect.poll(() => storedDraftSummary(page)).not.toBeNull();
 
   await page.goto("/dashboard/new");
-  await expect(page).toHaveURL(new RegExp(`${savedPath}$`));
+  await expect(page).toHaveURL(/\/dashboard\/new$/);
+  await expect(
+    page.getByText(/This browser draft belongs to a saved walk/),
+  ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveValue("Cleanup blocked walk");
+
+  await page.getByLabel("Title").fill("Cleanup blocked walk updated");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page.getByRole("heading", { name: "Walk saved" })).toBeVisible();
+  await page.getByRole("link", { name: "Open saved walk" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Cleanup blocked walk updated" }),
+  ).toBeVisible();
+
+  await page.goto("/dashboard/new");
+  await page
+    .getByRole("button", { name: "Start a new walk without browser recovery" })
+    .click();
+  await expect(page.getByLabel("Title")).toHaveValue("");
+  await expect(
+    page.getByText(/existing browser draft was left untouched/),
+  ).toBeVisible();
 });
 
 test("opens and replays the seeded photo walk without social controls", async ({

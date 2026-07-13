@@ -74,13 +74,14 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   const [restoreFailure, setRestoreFailure] = useState<string | null>(null);
   const [removingPhotoId, setRemovingPhotoId] = useState<string | null>(null);
   const [confirmedWalkId, setConfirmedWalkId] = useState<string | null>(null);
+  const [existingWalkId, setExistingWalkId] = useState<string | null>(null);
+  const [confirmationPending, setConfirmationPending] = useState(false);
   const previewUrls = useRef(new Set<string>());
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistQueue = useRef<Promise<void>>(Promise.resolve());
   const draftRef = useRef<WalkDraft | null>(null);
   const skipFlush = useRef(false);
   const browserRecoveryEnabled = useRef(true);
-  const confirmRestoredDraft = useRef(false);
 
   const updateDraft = useCallback((change: (current: WalkDraft) => WalkDraft) => {
     setDraft((current) => (current ? change(current) : current));
@@ -134,6 +135,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       try {
         const restored = await repository.restore(userId);
         if (!active) return;
+        let notice = restored ? "Draft restored from this browser." : null;
         if (restored) {
           const confirmation = await createClient()
             .from("walks")
@@ -141,16 +143,12 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
             .eq("id", restored.id)
             .maybeSingle();
           if (confirmation.error) {
-            confirmRestoredDraft.current = true;
-            setDraftNotice(
-              `Draft restored, but its saved status couldn't be confirmed: ${confirmation.error.message}. You can keep editing; we'll check again when you save.`,
-            );
-          }
-          if (confirmation.data) {
-            skipFlush.current = true;
-            await repository.clear(userId).catch(() => undefined);
-            router.replace(`/dashboard/walks/${restored.id}`);
-            return;
+            setConfirmationPending(true);
+            notice = `Draft restored, but its saved status couldn't be confirmed: ${confirmation.error.message}. You can keep editing; we'll check again when you save.`;
+          } else if (confirmation.data) {
+            setExistingWalkId(restored.id);
+            notice =
+              "This browser draft belongs to a saved walk. Open the saved walk, or continue editing and save to update it.";
           }
         }
         const value = restored ?? newWalkDraft(userId);
@@ -163,9 +161,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         }
         setPreviews(nextPreviews);
         setDraft(value);
-        if (restored && !confirmRestoredDraft.current) {
-          setDraftNotice("Draft restored from this browser.");
-        }
+        if (notice) setDraftNotice(notice);
 
         const interrupted = value.photos.filter(
           ({ status }) => status === "parsing",
@@ -201,7 +197,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     return () => {
       active = false;
     };
-  }, [repository, router, updatePhoto, userId]);
+  }, [repository, updatePhoto, userId]);
 
   useEffect(() => {
     if (!draft || saving) return;
@@ -406,6 +402,12 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   async function removePhoto(photo: DraftPhoto) {
     if (!draft || saving || removingPhotoId || confirmedWalkId) return;
+    if (existingWalkId || confirmationPending) {
+      setSaveMessage(
+        "Photo removal is disabled while this draft may already belong to a saved walk.",
+      );
+      return;
+    }
     setRemovingPhotoId(photo.id);
     try {
       if (photo.upload.attempted && photo.mime && extForMime(photo.mime)) {
@@ -524,6 +526,22 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     );
   }
 
+  function startWithoutBrowserRecovery() {
+    browserRecoveryEnabled.current = false;
+    setConfirmationPending(false);
+    previewUrls.current.forEach(URL.revokeObjectURL);
+    previewUrls.current.clear();
+    setPreviews({});
+    setExistingWalkId(null);
+    setRestoreFailure(null);
+    setStorageError(null);
+    setSaveMessage(null);
+    setDraftNotice(
+      "Started a new walk without browser recovery. The existing browser draft was left untouched.",
+    );
+    setDraft(newWalkDraft(userId));
+  }
+
   async function persistForSave(value: WalkDraft) {
     try {
       await persist(value);
@@ -594,7 +612,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       return;
     }
 
-    if (confirmRestoredDraft.current) {
+    if (confirmationPending) {
       const confirmation = await supabase
         .from("walks")
         .select("id")
@@ -607,9 +625,13 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         setSaving(false);
         return;
       }
-      confirmRestoredDraft.current = false;
+      setConfirmationPending(false);
       if (confirmation.data) {
-        await finishSavedWalk(snapshot.id);
+        setExistingWalkId(snapshot.id);
+        setDraftNotice(
+          "This draft already has a saved walk. Your local edits are still here; press Save again to update it, or open the saved walk.",
+        );
+        setSaving(false);
         return;
       }
     }
@@ -797,14 +819,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
           <button
             type="button"
             className={button}
-            onClick={() => {
-              browserRecoveryEnabled.current = false;
-              setRestoreFailure(null);
-              setDraftNotice(
-                "Browser recovery is unavailable. This walk only lasts in this tab until saved.",
-              );
-              setDraft(newWalkDraft(userId));
-            }}
+            onClick={startWithoutBrowserRecovery}
           >
             Start without browser recovery
           </button>
@@ -1060,21 +1075,29 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
           />
         )}
         {placementControls(stop.stopId, located, stop.originalName)}
-        <button
-          type="button"
-          aria-label={`Remove ${stop.originalName}`}
-          className="min-h-11 self-start text-sm text-ink-muted underline underline-offset-4 hover:text-ink disabled:opacity-50"
-          disabled={saving || Boolean(removingPhotoId)}
-          onClick={() => void removePhoto(stop)}
-        >
-          {removingPhotoId === stop.id ? "Removing…" : "Remove"}
-        </button>
+        {photoRemovalBlocked ? (
+          <p className="text-xs text-ink-muted">
+            Photo removal is disabled while this draft may belong to a saved walk.
+          </p>
+        ) : (
+          <button
+            type="button"
+            aria-label={`Remove ${stop.originalName}`}
+            className="min-h-11 self-start text-sm text-ink-muted underline underline-offset-4 hover:text-ink disabled:opacity-50"
+            disabled={saving || Boolean(removingPhotoId)}
+            onClick={() => void removePhoto(stop)}
+          >
+            {removingPhotoId === stop.id ? "Removing…" : "Remove"}
+          </button>
+        )}
       </li>
     );
   }
 
   const showImportQueue =
     importing || draft.photos.some(({ status }) => status === "error");
+  const photoRemovalBlocked =
+    Boolean(existingWalkId) || confirmationPending;
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -1099,6 +1122,22 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
           </p>
         )}
       </div>
+
+      {existingWalkId && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-wash p-3 text-sm">
+          <Link href={`/dashboard/walks/${existingWalkId}`} className={button}>
+            Open saved walk
+          </Link>
+          <button
+            type="button"
+            className={button}
+            disabled={saving}
+            onClick={startWithoutBrowserRecovery}
+          >
+            Start a new walk without browser recovery
+          </button>
+        </div>
+      )}
 
       <section aria-label="Placement" className="flex flex-col gap-3">
         <h2 className="font-medium">Place stops on the map</h2>
