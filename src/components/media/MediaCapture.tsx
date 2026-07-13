@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 export type CapturedMedia = {
   kind: "photo" | "audio";
   file: Blob;
+  originalName: string | null;
   mime: string;
   previewUrl: string;
 };
@@ -44,6 +45,7 @@ export function MediaCapture({
     onCapture({
       kind: "photo",
       file,
+      originalName: file.name,
       mime: file.type || "image/jpeg",
       previewUrl: URL.createObjectURL(file),
     });
@@ -75,6 +77,7 @@ export function MediaCapture({
         onCapture({
           kind: "audio",
           file: blob,
+          originalName: null,
           mime: type,
           previewUrl: URL.createObjectURL(blob),
         });

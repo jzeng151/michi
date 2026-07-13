@@ -97,29 +97,53 @@ insert into public.walks (id, owner_id, title, description, region, path, distan
   1800, 'public', true
 );
 
--- ============================================================ media pins (seed art in public 'curated' bucket)
+-- ============================================================ media stops (seed art in public 'curated' bucket)
 
-insert into public.walk_media (walk_id, kind, bucket, storage_path, alt_text, caption, lat, lng, sort_index) values
-('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'sakura-canal.webp',
- 'Cherry blossoms arching over a narrow stone canal', 'The canal in full bloom near Ginkaku-ji', 35.0254, 135.7946, 0),
-('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'stone-bridge.webp',
- 'A small stone bridge beside the tree-lined Philosopher''s Path canal', 'Canal-side path and bridge near Ginkaku-ji', 35.0186, 135.7946, 1),
-('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'cedar-trail.webp',
- 'A Nakasendo trail sign beneath autumn maple trees between Magome and Tsumago', 'On the old road between Magome and Tsumago', 35.5455, 137.5808, 0),
-('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'post-town.webp',
- 'Wooden Edo-period houses lining a sloped village street', 'Tsumago, lovingly preserved', 35.5745, 137.5938, 1),
-('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'coastal-wave.webp',
- 'A wide sandy beach and calm sea beneath a pale sky at Yuigahama', 'Yuigahama, looking along the Kamakura coast', 35.3084, 139.5301, 0),
-('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'sunset-cape.webp',
- 'Enoshima and Mount Fuji seen across the coast from Inamuragasaki', 'The coastal view from Inamuragasaki', 35.3040, 139.5227, 1),
-('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'neon-crossing.webp',
- 'Shibuya Scramble Crossing beneath illuminated signs at night', 'The scramble after dark', 35.6591, 139.7006, 0),
-('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'lantern-alley.webp',
- 'Shibuya Center-gai lit by storefront signs after dark', 'Center-gai after dark', 35.6628, 139.6987, 1),
-('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'vermilion-gates.webp',
- 'A tunnel of closely spaced vermilion torii gates', 'Senbon torii, just after dawn', 34.9679, 135.7756, 0),
-('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'fox-shrine.webp',
- 'The red and white Okusha Hohaisho shrine beneath dense trees', 'Okusha Hohaisho at Fushimi Inari', 34.9680, 135.7773, 1);
+insert into public.walk_stops (id, walk_id, kind, sort_index, lat, lng, note) values
+('11000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'photo', 0, 35.0254, 135.7946,
+ 'The canal in full bloom near Ginkaku-ji'),
+('11000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'photo', 1, 35.0186, 135.7946,
+ 'Canal-side path and bridge near Ginkaku-ji'),
+('11000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'photo', 0, 35.5455, 137.5808,
+ 'On the old road between Magome and Tsumago'),
+('11000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000002', 'photo', 1, 35.5745, 137.5938,
+ 'Tsumago, lovingly preserved'),
+('11000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000003', 'photo', 0, 35.3084, 139.5301,
+ 'Yuigahama, looking along the Kamakura coast'),
+('11000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-000000000003', 'photo', 1, 35.3040, 139.5227,
+ 'The coastal view from Inamuragasaki'),
+('11000000-0000-4000-8000-000000000007', '10000000-0000-4000-8000-000000000004', 'photo', 0, 35.6591, 139.7006,
+ 'The scramble after dark'),
+('11000000-0000-4000-8000-000000000008', '10000000-0000-4000-8000-000000000004', 'photo', 1, 35.6628, 139.6987,
+ 'Center-gai after dark'),
+('11000000-0000-4000-8000-000000000009', '10000000-0000-4000-8000-000000000005', 'photo', 0, 34.9679, 135.7756,
+ 'Senbon torii, just after dawn'),
+('11000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-000000000005', 'photo', 1, 34.9680, 135.7773,
+ 'Okusha Hohaisho at Fushimi Inari');
+
+insert into public.walk_media (
+  stop_id, bucket, storage_path, alt_text, original_filename, mime_type, orientation
+) values
+('11000000-0000-4000-8000-000000000001', 'curated', 'sakura-canal.webp',
+ 'Cherry blossoms arching over a narrow stone canal', 'sakura-canal.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000002', 'curated', 'stone-bridge.webp',
+ 'A small stone bridge beside the tree-lined Philosopher''s Path canal', 'stone-bridge.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000003', 'curated', 'cedar-trail.webp',
+ 'A Nakasendo trail sign beneath autumn maple trees between Magome and Tsumago', 'cedar-trail.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000004', 'curated', 'post-town.webp',
+ 'Wooden Edo-period houses lining a sloped village street', 'post-town.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000005', 'curated', 'coastal-wave.webp',
+ 'A wide sandy beach and calm sea beneath a pale sky at Yuigahama', 'coastal-wave.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000006', 'curated', 'sunset-cape.webp',
+ 'Enoshima and Mount Fuji seen across the coast from Inamuragasaki', 'sunset-cape.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000007', 'curated', 'neon-crossing.webp',
+ 'Shibuya Scramble Crossing beneath illuminated signs at night', 'neon-crossing.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000008', 'curated', 'lantern-alley.webp',
+ 'Shibuya Center-gai lit by storefront signs after dark', 'lantern-alley.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000009', 'curated', 'vermilion-gates.webp',
+ 'A tunnel of closely spaced vermilion torii gates', 'vermilion-gates.webp', 'image/webp', 1),
+('11000000-0000-4000-8000-000000000010', 'curated', 'fox-shrine.webp',
+ 'The red and white Okusha Hohaisho shrine beneath dense trees', 'fox-shrine.webp', 'image/webp', 1);
 
 -- ============================================================ likes (recent, so Trending has data)
 

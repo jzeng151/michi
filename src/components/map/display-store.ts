@@ -8,7 +8,7 @@ export type OverviewPoint = {
 };
 
 export type MapDisplay =
-  | { kind: "walk"; walkId: string; path: LineString; media: MediaPin[] }
+  | { kind: "walk"; walkId: string; path: LineString | null; media: MediaPin[] }
   | { kind: "overview"; points: OverviewPoint[] }
   | {
       kind: "draft";

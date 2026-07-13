@@ -26,7 +26,11 @@ export function WalkList({ lists }: { lists: BrowseLists }) {
   useEffect(() => {
     setMapDisplay({
       kind: "overview",
-      points: walks.map((w) => ({ id: w.id, title: w.title, start: w.start })),
+      points: walks.flatMap((walk) =>
+        walk.start
+          ? [{ id: walk.id, title: walk.title, start: walk.start }]
+          : [],
+      ),
     });
   }, [walks]);
 

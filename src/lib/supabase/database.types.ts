@@ -184,52 +184,90 @@ export type Database = {
         Row: {
           alt_text: string | null
           bucket: string
-          caption: string | null
           created_at: string
           id: string
-          kind: string
-          lat: number
-          lng: number
-          sort_index: number
+          mime_type: string | null
+          orientation: number | null
+          original_filename: string | null
+          stop_id: string
           storage_path: string
-          walk_id: string
         }
         Insert: {
           alt_text?: string | null
           bucket?: string
-          caption?: string | null
           created_at?: string
           id?: string
-          kind: string
-          lat: number
-          lng: number
-          sort_index?: number
+          mime_type?: string | null
+          orientation?: number | null
+          original_filename?: string | null
+          stop_id: string
           storage_path: string
-          walk_id: string
         }
         Update: {
           alt_text?: string | null
           bucket?: string
-          caption?: string | null
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          orientation?: number | null
+          original_filename?: string | null
+          stop_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "walk_media_stop_id_fkey"
+            columns: ["stop_id"]
+            isOneToOne: true
+            referencedRelation: "walk_stops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      walk_stops: {
+        Row: {
+          captured_at: string | null
+          created_at: string
+          id: string
+          kind: string
+          lat: number | null
+          lng: number | null
+          note: string | null
+          sort_index: number
+          walk_id: string
+        }
+        Insert: {
+          captured_at?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
+          sort_index: number
+          walk_id: string
+        }
+        Update: {
+          captured_at?: string | null
           created_at?: string
           id?: string
           kind?: string
-          lat?: number
-          lng?: number
+          lat?: number | null
+          lng?: number | null
+          note?: string | null
           sort_index?: number
-          storage_path?: string
           walk_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "walk_media_walk_id_fkey"
+            foreignKeyName: "walk_stops_walk_id_fkey"
             columns: ["walk_id"]
             isOneToOne: false
             referencedRelation: "trending_walks"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "walk_media_walk_id_fkey"
+            foreignKeyName: "walk_stops_walk_id_fkey"
             columns: ["walk_id"]
             isOneToOne: false
             referencedRelation: "walks"
@@ -246,7 +284,7 @@ export type Database = {
           id: string
           is_curated: boolean
           owner_id: string
-          path: Json
+          path: Json | null
           region: string | null
           title: string
           visibility: string
@@ -254,12 +292,12 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
-          distance_m: number
+          distance_m?: number
           duration_s?: number | null
           id?: string
           is_curated?: boolean
           owner_id: string
-          path: Json
+          path?: Json | null
           region?: string | null
           title: string
           visibility?: string
@@ -272,7 +310,7 @@ export type Database = {
           id?: string
           is_curated?: boolean
           owner_id?: string
-          path?: Json
+          path?: Json | null
           region?: string | null
           title?: string
           visibility?: string

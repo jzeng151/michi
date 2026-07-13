@@ -67,26 +67,28 @@ export function WalkDetailPanel({
         <p className="text-sm leading-relaxed">{walk.description}</p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setPlayback("cinematic")}
-          className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
-        >
-          ▶ Play this walk
-        </button>
-        <button
-          type="button"
-          onClick={() => setPlayback("steps")}
-          className="rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash"
-        >
-          Step through stops
-        </button>
-      </div>
+      {walk.path && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPlayback("cinematic")}
+            className="rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-ink transition-opacity hover:opacity-90"
+          >
+            ▶ Play this walk
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlayback("steps")}
+            className="rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash"
+          >
+            Step through stops
+          </button>
+        </div>
+      )}
 
       <MediaStopList media={media} />
 
-      {playback && (
+      {playback && walk.path && (
         <PlaybackOverlay
           title={walk.title}
           path={walk.path}

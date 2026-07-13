@@ -9,7 +9,7 @@ export type WalkRow = {
   title: string;
   description: string | null;
   region: string | null;
-  path: LineString;
+  path: LineString | null;
   distance_m: number;
   duration_s: number | null;
   visibility: "public" | "private";
@@ -19,14 +19,18 @@ export type WalkRow = {
 
 export type MediaRow = {
   id: string;
-  kind: "photo" | "audio";
   bucket: "walk-media" | "curated";
   storage_path: string;
   alt_text: string | null;
-  caption: string | null;
-  lat: number;
-  lng: number;
+};
+
+export type WalkStopRow = {
+  id: string;
+  kind: "photo" | "audio" | "note";
   sort_index: number;
+  lat: number | null;
+  lng: number | null;
+  note: string | null;
 };
 
 /** Media row resolved for display; url is null when the viewer may not load it. */
@@ -56,5 +60,5 @@ export type WalkSummary = {
   distanceM: number;
   isCurated: boolean;
   cover: { url: string; alt: string } | null;
-  start: [number, number];
+  start: [number, number] | null;
 };

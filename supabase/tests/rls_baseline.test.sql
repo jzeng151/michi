@@ -35,35 +35,71 @@ insert into public.walks (
     'public'
   );
 
+insert into public.walk_stops (
+  id, walk_id, kind, sort_index, lat, lng
+) values
+  (
+    '40000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    'photo',
+    0,
+    35,
+    135
+  ),
+  (
+    '40000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000002',
+    'photo',
+    0,
+    35,
+    135
+  ),
+  (
+    '40000000-0000-4000-8000-000000000003',
+    '20000000-0000-4000-8000-000000000002',
+    'photo',
+    1,
+    35,
+    135
+  ),
+  (
+    '40000000-0000-4000-8000-000000000004',
+    '20000000-0000-4000-8000-000000000001',
+    'photo',
+    1,
+    35,
+    135
+  );
+
 insert into public.walk_media (
-  id, walk_id, kind, bucket, storage_path, lat, lng
+  id, stop_id, bucket, storage_path, original_filename, mime_type, orientation
 ) values
   (
     '30000000-0000-4000-8000-000000000001',
-    '20000000-0000-4000-8000-000000000001',
-    'photo',
+    '40000000-0000-4000-8000-000000000001',
     'walk-media',
     '00000000-0000-4000-8000-000000000002/20000000-0000-4000-8000-000000000001/private.jpg',
-    35,
-    135
+    'private.jpg',
+    'image/jpeg',
+    1
   ),
   (
     '30000000-0000-4000-8000-000000000002',
-    '20000000-0000-4000-8000-000000000002',
-    'photo',
+    '40000000-0000-4000-8000-000000000002',
     'walk-media',
     '00000000-0000-4000-8000-000000000002/20000000-0000-4000-8000-000000000002/public.jpg',
-    35,
-    135
+    'public.jpg',
+    'image/jpeg',
+    1
   ),
   (
     '30000000-0000-4000-8000-000000000003',
-    '20000000-0000-4000-8000-000000000002',
-    'photo',
+    '40000000-0000-4000-8000-000000000003',
     'walk-media',
     '00000000-0000-4000-8000-000000000004/poisoned.jpg',
-    35,
-    135
+    'poisoned.jpg',
+    'image/jpeg',
+    1
   );
 
 insert into storage.objects (bucket_id, name) values
@@ -149,14 +185,16 @@ select throws_ok(
 );
 select throws_ok(
   $$
-    insert into public.walk_media (walk_id, kind, bucket, storage_path, lat, lng)
+    insert into public.walk_media (
+      stop_id, bucket, storage_path, original_filename, mime_type, orientation
+    )
     values (
-      '20000000-0000-4000-8000-000000000001',
-      'photo',
+      '40000000-0000-4000-8000-000000000004',
       'walk-media',
       '00000000-0000-4000-8000-000000000003/foreign.jpg',
-      35,
-      135
+      'foreign.jpg',
+      'image/jpeg',
+      1
     )
   $$,
   '42501',
