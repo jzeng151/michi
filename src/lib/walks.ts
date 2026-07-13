@@ -7,6 +7,7 @@ import type {
   MediaPin,
   MediaRow,
   MediaStop,
+  WalkStop,
   WalkRow,
   WalkStopRow,
   WalkSummary,
@@ -129,7 +130,7 @@ export type WalkDetailData = {
   walk: WalkRow;
   ownerName: string;
   ownerUsername: string;
-  media: MediaStop[];
+  media: WalkStop[];
   pins: MediaPin[];
 };
 
@@ -153,27 +154,42 @@ export async function fetchWalkDetail(
 
   const row = data as unknown as DetailRow;
   const stops = ordered(row.walk_stops);
-  const photoStops = stops.filter(
-    (stop) =>
-      stop.kind === "photo" &&
-      stop.walk_media !== null,
+  const mediaRows = stops.flatMap((stop) =>
+    stop.walk_media ? [stop.walk_media] : [],
   );
-  const mediaRows = photoStops.map((stop) => stop.walk_media!);
   const urls = await resolveMediaUrls(supabase, mediaRows);
-  const media: MediaStop[] = photoStops.map((stop) => ({
-    id: stop.walk_media!.id,
-    kind: "photo",
-    url: isHeicMime(stop.walk_media!.mime_type)
-      ? null
-      : (urls.get(stop.walk_media!.storage_path) ?? null),
-    mimeType: stop.walk_media!.mime_type,
-    alt: stop.walk_media!.alt_text,
-    caption: stop.note,
-    lat: stop.lat,
-    lng: stop.lng,
-  }));
+  const media = stops.flatMap<WalkStop>((stop) => {
+    if (stop.kind === "note") {
+      return stop.note
+        ? [
+            {
+              id: stop.id,
+              kind: "note",
+              note: stop.note,
+              lat: stop.lat,
+              lng: stop.lng,
+            },
+          ]
+        : [];
+    }
+    if (!stop.walk_media) return [];
+    const row = stop.walk_media;
+    const item: MediaStop = {
+      id: row.id,
+      kind: stop.kind,
+      url: isHeicMime(row.mime_type)
+        ? null
+        : (urls.get(row.storage_path) ?? null),
+      mimeType: row.mime_type,
+      alt: row.alt_text,
+      caption: stop.note,
+      lat: stop.lat,
+      lng: stop.lng,
+    };
+    return [item];
+  });
   const pins: MediaPin[] = media.flatMap((item, listIndex) =>
-    item.lat === null || item.lng === null
+    item.kind === "note" || item.lat === null || item.lng === null
       ? []
       : [{ ...item, lat: item.lat, lng: item.lng, listIndex }],
   );

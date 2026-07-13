@@ -1,8 +1,8 @@
-import type { MediaStop } from "../../lib/types";
+import type { WalkStop } from "../../lib/types";
 import { isHeicMime } from "../../lib/media-url";
 
-/** Ordered list for every media stop, including photos awaiting placement. */
-export function MediaStopList({ media }: { media: MediaStop[] }) {
+/** Ordered list for every stop, including notes and photos awaiting placement. */
+export function MediaStopList({ media }: { media: WalkStop[] }) {
   if (media.length === 0) {
     return <p className="text-sm text-ink-muted">No stops on this walk yet.</p>;
   }
@@ -20,9 +20,15 @@ export function MediaStopList({ media }: { media: MediaStop[] }) {
           >
             <p className="mb-2 text-sm text-ink-muted">
               Stop {i + 1} of {media.length} ·{" "}
-              {pin.kind === "photo" ? "Photo" : "Audio note"}
+              {pin.kind === "photo"
+                ? "Photo"
+                : pin.kind === "audio"
+                  ? "Audio note"
+                  : "Note"}
             </p>
-            {pin.kind === "photo" ? (
+            {pin.kind === "note" ? (
+              <p className="whitespace-pre-wrap text-sm">{pin.note}</p>
+            ) : pin.kind === "photo" ? (
               isHeicMime(pin.mimeType) ? (
                 <p className="rounded-lg bg-wash p-3 text-sm">
                   HEIC preview unavailable. The original photo is retained.
@@ -48,7 +54,9 @@ export function MediaStopList({ media }: { media: MediaStop[] }) {
                 Sign in to listen to this audio note.
               </p>
             )}
-            {pin.caption && <p className="mt-2 text-sm">{pin.caption}</p>}
+            {pin.kind !== "note" && pin.caption && (
+              <p className="mt-2 text-sm">{pin.caption}</p>
+            )}
           </li>
         ))}
       </ol>

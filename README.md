@@ -2,7 +2,7 @@
 
 Michi turns the photos from a walk into a map-based memory: import a camera roll, place the moments that need help, replay the route in time order, and reveal stories from the path beneath your own.
 
-The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, media storage, bounded EXIF batch import, and an initial replay experience are working. Resilient drafts, complete time-based replay, and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
+The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, bounded EXIF batch import, browser-restored placement drafts, reliable media sync, and an initial replay experience are working. Complete time-based replay and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
 
 ## Stack
 
@@ -57,7 +57,7 @@ These are development-only credentials. Never use the seed or its known password
 | `/` | Postcard Club landing page and seasonal theme selector |
 | `/login` | Local email/password sign-in and sign-up |
 | `/dashboard` | Curated and personal walk gallery |
-| `/dashboard/new` | Current walk creation flow |
+| `/dashboard/new` | Recoverable photo placement and walk creation editor |
 | `/dashboard/walks/[id]` | Authenticated walk detail and replay |
 | `/walks/[id]` | Read-only public walk page; anonymous private media is not complete |
 | `/palettes` | Internal palette reference |

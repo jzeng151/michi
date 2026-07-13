@@ -43,7 +43,7 @@ export default async function PublicWalkPage({
 
   const { walk, ownerName, media, pins } = data;
   const lockedMedia = media.some(
-    (m) => m.url === null && !isHeicMime(m.mimeType),
+    (m) => m.kind !== "note" && m.url === null && !isHeicMime(m.mimeType),
   );
 
   return (

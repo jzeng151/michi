@@ -357,6 +357,19 @@ export type Database = {
       can_view_walk: { Args: { w_id: string }; Returns: boolean }
       is_lnglat_array: { Args: { coords: Json }; Returns: boolean }
       owns_editable_walk: { Args: { w_id: string }; Returns: boolean }
+      save_walk_draft: {
+        Args: {
+          p_description: string
+          p_distance_m: number
+          p_path: Json
+          p_region: string
+          p_stops: Json
+          p_title: string
+          p_visibility: string
+          p_walk_id: string
+        }
+        Returns: string
+      }
       walk_is_public: { Args: { w_id: string }; Returns: boolean }
     }
     Enums: {
@@ -493,4 +506,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

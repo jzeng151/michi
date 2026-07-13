@@ -46,6 +46,16 @@ export type MediaStop = {
   lng: number | null;
 };
 
+export type NoteStop = {
+  id: string;
+  kind: "note";
+  note: string;
+  lat: number | null;
+  lng: number | null;
+};
+
+export type WalkStop = MediaStop | NoteStop;
+
 /** Located media stop, safe to render as a map pin. */
 export type MediaPin = MediaStop & {
   lat: number;

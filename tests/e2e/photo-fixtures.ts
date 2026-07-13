@@ -23,3 +23,10 @@ export const importPhotoFixtures = [
     buffer: Buffer.from("not an image"),
   },
 ];
+
+export function unplacedPhotoFixtures(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    ...importPhotoFixtures[1],
+    name: `needs-placement-${String(index + 1).padStart(3, "0")}.jpg`,
+  }));
+}

@@ -49,7 +49,7 @@ export function useMapDisplay(): MapDisplay {
 // provides "add point at map center" for keyboard users.
 
 let mapClickHandler: ((lngLat: [number, number]) => void) | null = null;
-let centerPointProvider: (() => void) | null = null;
+let centerPointProvider: (() => boolean) | null = null;
 
 export function setMapClickHandler(
   handler: ((lngLat: [number, number]) => void) | null,
@@ -66,10 +66,10 @@ export function hasMapClickHandler(): boolean {
 }
 
 /** Registered by the map: emits a click at the current map center. */
-export function setCenterPointProvider(provider: (() => void) | null) {
+export function setCenterPointProvider(provider: (() => boolean) | null) {
   centerPointProvider = provider;
 }
 
 export function requestCenterPoint() {
-  centerPointProvider?.();
+  return centerPointProvider?.() ?? false;
 }
