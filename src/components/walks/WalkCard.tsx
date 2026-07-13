@@ -31,15 +31,13 @@ export function WalkCard({ walk }: { walk: WalkSummary }) {
               .filter(Boolean)
               .join(" · ")}
           </p>
-          <p className="text-sm text-ink-muted">
-            <span aria-hidden="true">♥</span>
-            <span className="sr-only">Likes:</span> {walk.likeCount}
-            {walk.isCurated && (
-              <span className="ml-2 rounded-full bg-wash px-2 py-0.5 text-xs">
+          {walk.isCurated && (
+            <p className="text-sm text-ink-muted">
+              <span className="rounded-full bg-wash px-2 py-0.5 text-xs">
                 Curated
               </span>
-            )}
-          </p>
+            </p>
+          )}
         </div>
       </Link>
     </li>

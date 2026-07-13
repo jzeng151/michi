@@ -166,7 +166,7 @@ function Film() {
             <Image
               data-reveal
               src={shotDetail}
-              alt="A photograph saved at its exact point on the Philosopher's Path"
+              alt="A photograph saved along the Nakasendo route"
               className="border border-line"
               sizes="(min-width: 768px) 62vw, 100vw"
               placeholder="blur"
@@ -381,7 +381,7 @@ function Postcards() {
               <Image
                 data-story-item
                 src={shotDetail}
-                alt="Photo stops placed along the Philosopher's Path"
+                alt="Photo stops placed along the Nakasendo route"
                 className="absolute right-0 top-[31%] w-[68%] rotate-2 rounded-2xl border border-line bg-surface shadow-[0_4px_8px_rgba(29,44,35,0.14)]"
                 sizes="(min-width: 768px) 40vw, 68vw"
                 placeholder="blur"

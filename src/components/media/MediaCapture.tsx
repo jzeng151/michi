@@ -23,8 +23,10 @@ function pickAudioMime(): string | null {
 
 export function MediaCapture({
   onCapture,
+  showAudio = true,
 }: {
   onCapture: (media: CapturedMedia) => void;
+  showAudio?: boolean;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -109,25 +111,30 @@ export function MediaCapture({
           aria-label="Add photo"
           onChange={onPhotoChange}
         />
-        {audioSupported ? (
-          <button
-            type="button"
-            className={`${buttonClass} ${recording ? "bg-accent text-accent-ink" : ""}`}
-            aria-pressed={recording}
-            onClick={toggleAudio}
-          >
-            {recording ? "■ Stop recording" : "🎙 Record audio note"}
-          </button>
-        ) : (
-          <p className="self-center text-sm text-ink-muted">
-            Audio notes aren&apos;t supported in this browser.
-          </p>
-        )}
+        {showAudio &&
+          (audioSupported ? (
+            <button
+              type="button"
+              className={`${buttonClass} ${recording ? "bg-accent text-accent-ink" : ""}`}
+              aria-pressed={recording}
+              onClick={toggleAudio}
+            >
+              {recording ? "■ Stop recording" : "🎙 Record audio note"}
+            </button>
+          ) : (
+            <p className="self-center text-sm text-ink-muted">
+              Audio notes aren&apos;t supported in this browser.
+            </p>
+          ))}
       </div>
-      <div aria-live="polite">
-        {recording && <p className="text-sm text-accent-text">Recording audio…</p>}
-        {audioError && <p className="text-sm text-accent-text">{audioError}</p>}
-      </div>
+      {showAudio && (
+        <div aria-live="polite">
+          {recording && (
+            <p className="text-sm text-accent-text">Recording audio…</p>
+          )}
+          {audioError && <p className="text-sm text-accent-text">{audioError}</p>}
+        </div>
+      )}
     </div>
   );
 }

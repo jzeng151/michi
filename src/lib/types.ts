@@ -55,7 +55,6 @@ export type WalkSummary = {
   region: string | null;
   distanceM: number;
   isCurated: boolean;
-  likeCount: number;
   cover: { url: string; alt: string } | null;
   start: [number, number];
 };

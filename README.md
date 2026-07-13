@@ -119,7 +119,7 @@ pnpm db:stop
 - The marketing page lives at `/`; the signed-in gallery lives at `/dashboard`.
 - Spring, Summer, Autumn, and Winter themes are approved, including light and dark modes.
 - The photo-first import, replay, and Layered Memory paths are the v1 priority.
-- Existing GPS recording, audio, and social code should remain stable but should not expand during the v1 work.
+- GPS recording, audio capture, and social data remain available in code and schema but are not exposed in the v1 UI.
 - Install prompts, offline maps/media, and anonymous share links are cuttable. Core import and replay correctness are not.
 
 ## Deployment

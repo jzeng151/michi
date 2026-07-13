@@ -147,13 +147,17 @@ export function PlaybackOverlay({
               className="absolute inset-x-0 bottom-24 z-10 flex justify-center px-4"
             >
               <figure className="max-w-md rounded-2xl border border-line bg-surface p-3 shadow-xl">
-                {activeStop.kind === "photo" && activeStop.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- storage URLs
-                  <img
-                    src={activeStop.url}
-                    alt={activeStop.alt ?? ""}
-                    className="max-h-72 w-full rounded-xl object-contain"
-                  />
+                {activeStop.kind === "photo" ? (
+                  activeStop.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- storage URLs
+                    <img
+                      src={activeStop.url}
+                      alt={activeStop.alt ?? ""}
+                      className="max-h-72 w-full rounded-xl object-contain"
+                    />
+                  ) : (
+                    <p className="px-6 py-4 text-lg">Photo unavailable.</p>
+                  )
                 ) : (
                   <p className="px-6 py-4 text-lg">
                     <span aria-hidden="true">🎙</span> Audio note playing…

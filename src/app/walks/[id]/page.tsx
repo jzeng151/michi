@@ -7,7 +7,6 @@ import { fetchWalkDetail } from "@/lib/walks";
 import { formatDate, formatDistance } from "@/lib/format";
 import { WalkMap } from "@/components/map/WalkMap";
 import { MediaStopList } from "@/components/walks/MediaStopList";
-import { Comments } from "@/components/social/Comments";
 
 const getDetail = cache(async (id: string) => {
   if (!z.uuid().safeParse(id).success) return null;
@@ -41,7 +40,7 @@ export default async function PublicWalkPage({
   // RLS hides private walks from non-owners, so this 404s for strangers.
   if (!data) notFound();
 
-  const { walk, ownerName, likeCount, media } = data;
+  const { walk, ownerName, media } = data;
   const lockedMedia = media.some((m) => m.url === null);
 
   return (
@@ -70,10 +69,6 @@ export default async function PublicWalkPage({
               .join(" · ")}{" "}
             · by {ownerName} · {formatDate(walk.created_at)}
           </p>
-          <p className="text-sm text-ink-muted">
-            <span aria-hidden="true">♥</span>
-            <span className="sr-only">Likes:</span> {likeCount}
-          </p>
         </header>
 
         {walk.description && (
@@ -86,8 +81,7 @@ export default async function PublicWalkPage({
 
         {lockedMedia && (
           <p className="rounded-xl bg-wash px-4 py-3 text-sm">
-            Some photos and audio notes on this walk are only visible to
-            signed-in walkers.{" "}
+            Some photos on this walk are only visible to signed-in walkers.{" "}
             <Link
               href={`/login?next=/walks/${walk.id}`}
               className="underline underline-offset-4"
@@ -98,16 +92,6 @@ export default async function PublicWalkPage({
         )}
 
         <MediaStopList media={media} />
-
-        <Comments
-          walkId={walk.id}
-          initial={data.comments}
-          viewerId=""
-          viewerName=""
-          viewerUsername=""
-          canComment={false}
-          lockedNote="Sign in to join the conversation."
-        />
       </main>
     </div>
   );
