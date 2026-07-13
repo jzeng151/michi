@@ -40,7 +40,7 @@ export default async function PublicWalkPage({
   // RLS hides private walks from non-owners, so this 404s for strangers.
   if (!data) notFound();
 
-  const { walk, ownerName, media } = data;
+  const { walk, ownerName, media, pins } = data;
   const lockedMedia = media.some((m) => m.url === null);
 
   return (
@@ -76,7 +76,7 @@ export default async function PublicWalkPage({
         )}
 
         <div className="h-[50dvh] overflow-hidden rounded-2xl border border-line">
-          <WalkMap title={walk.title} path={walk.path} media={media} />
+          <WalkMap title={walk.title} path={walk.path} media={pins} />
         </div>
 
         {lockedMedia && (

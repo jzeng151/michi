@@ -33,15 +33,23 @@ export type WalkStopRow = {
   note: string | null;
 };
 
-/** Media row resolved for display; url is null when the viewer may not load it. */
-export type MediaPin = {
+/** Media-backed stop resolved for display; url is null when it cannot load. */
+export type MediaStop = {
   id: string;
   kind: "photo" | "audio";
   url: string | null;
   alt: string | null;
   caption: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+/** Located media stop, safe to render as a map pin. */
+export type MediaPin = MediaStop & {
   lat: number;
   lng: number;
+  /** Position in the complete media list, including unplaced stops. */
+  listIndex?: number;
 };
 
 export type CommentItem = {

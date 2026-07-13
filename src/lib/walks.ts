@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
-import { lineStringFromCoordinates } from "./geo";
+import { lineStringFromCoordinates, pathDistance } from "./geo";
 import { resolveMediaUrls } from "./media-url";
 import type {
   LineString,
   MediaPin,
   MediaRow,
+  MediaStop,
   WalkRow,
   WalkStopRow,
   WalkSummary,
@@ -43,6 +44,16 @@ function routeOf(
   return path ?? lineStringFromCoordinates(placedCoordinates(stops));
 }
 
+function distanceOf(
+  storedPath: LineString | null,
+  route: LineString | null,
+  storedDistance: number,
+): number {
+  return storedPath === null && route
+    ? pathDistance(route.coordinates)
+    : storedDistance;
+}
+
 function coverOf(stops: StopWithMedia[]): MediaRow | null {
   return stops.find((stop) => stop.kind === "photo" && stop.walk_media)
     ?.walk_media ?? null;
@@ -67,7 +78,7 @@ async function toSummaries(
       id: row.id,
       title: row.title,
       region: row.region,
-      distanceM: row.distance_m,
+      distanceM: distanceOf(row.path, route, row.distance_m),
       isCurated: row.is_curated,
       cover: cover && url ? { url, alt: cover.alt_text ?? "" } : null,
       start: route?.coordinates[0] ?? placed[0] ?? null,
@@ -113,7 +124,8 @@ export type WalkDetailData = {
   walk: WalkRow;
   ownerName: string;
   ownerUsername: string;
-  media: MediaPin[];
+  media: MediaStop[];
+  pins: MediaPin[];
 };
 
 type DetailRow = WalkRow & {
@@ -139,32 +151,36 @@ export async function fetchWalkDetail(
   const photoStops = stops.filter(
     (stop) =>
       stop.kind === "photo" &&
-      stop.walk_media !== null &&
-      stop.lat !== null &&
-      stop.lng !== null,
+      stop.walk_media !== null,
   );
   const mediaRows = photoStops.map((stop) => stop.walk_media!);
   const urls = await resolveMediaUrls(supabase, mediaRows);
-  const media: MediaPin[] = photoStops.map((stop) => ({
+  const media: MediaStop[] = photoStops.map((stop) => ({
     id: stop.walk_media!.id,
     kind: "photo",
     url: urls.get(stop.walk_media!.storage_path) ?? null,
     alt: stop.walk_media!.alt_text,
     caption: stop.note,
-    lat: stop.lat!,
-    lng: stop.lng!,
+    lat: stop.lat,
+    lng: stop.lng,
   }));
+  const pins: MediaPin[] = media.flatMap((item, listIndex) =>
+    item.lat === null || item.lng === null
+      ? []
+      : [{ ...item, lat: item.lat, lng: item.lng, listIndex }],
+  );
 
   const profile = row.profiles;
 
+  const route = routeOf(row.path, stops);
   const walk: WalkRow = {
     id: row.id,
     owner_id: row.owner_id,
     title: row.title,
     description: row.description,
     region: row.region,
-    path: routeOf(row.path, stops),
-    distance_m: row.distance_m,
+    path: route,
+    distance_m: distanceOf(row.path, route, row.distance_m),
     duration_s: row.duration_s,
     visibility: row.visibility,
     is_curated: row.is_curated,
@@ -176,5 +192,6 @@ export async function fetchWalkDetail(
     ownerName: profile?.display_name ?? profile?.username ?? "Unknown walker",
     ownerUsername: profile?.username ?? "walker",
     media,
+    pins,
   };
 }

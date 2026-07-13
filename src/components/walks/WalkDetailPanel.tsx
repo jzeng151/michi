@@ -20,14 +20,14 @@ export function WalkDetailPanel({
   data: WalkDetailData;
   viewerId: string;
 }) {
-  const { walk, ownerName, ownerUsername, media } = data;
+  const { walk, ownerName, ownerUsername, media, pins } = data;
   const isOwner = walk.owner_id === viewerId;
   const isPublic = walk.visibility === "public";
   const [playback, setPlayback] = useState<PlaybackMode | null>(null);
 
   useEffect(() => {
-    setMapDisplay({ kind: "walk", walkId: walk.id, path: walk.path, media });
-  }, [walk.id, walk.path, media]);
+    setMapDisplay({ kind: "walk", walkId: walk.id, path: walk.path, media: pins });
+  }, [walk.id, walk.path, pins]);
 
   return (
     <article className="flex flex-col gap-4 p-4">
@@ -92,7 +92,7 @@ export function WalkDetailPanel({
         <PlaybackOverlay
           title={walk.title}
           path={walk.path}
-          media={media}
+          media={pins}
           initialMode={playback}
           onExit={() => setPlayback(null)}
         />
