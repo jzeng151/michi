@@ -48,7 +48,7 @@ export default async function PublicWalkPage({
     <div className="min-h-dvh bg-canvas">
       <header className="flex h-14 items-center justify-between border-b border-line bg-surface px-4">
         <Link href="/" className="font-display text-lg font-semibold">
-          <span className="text-accent" aria-hidden="true">
+          <span className="text-accent-text" aria-hidden="true">
             道
           </span>{" "}
           Michi

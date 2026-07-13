@@ -1,36 +1,118 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Michi
 
-## Getting Started
+Michi turns the photos from a walk into a map-based memory: import a camera roll, place the moments that need help, replay the route in time order, and reveal stories from the path beneath your own.
 
-First, run the development server:
+The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, media storage, and an initial replay experience are working. Batch EXIF import, resilient drafts, complete time-based replay, and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
+
+## Stack
+
+- Next.js 16, React 19, TypeScript, and Tailwind CSS 4
+- Supabase Auth, Postgres, Storage, migrations, and row-level security
+- MapLibre GL for maps
+- GSAP for motion, with reduced-motion paths
+
+## Prerequisites
+
+- Node.js 20.9 or newer
+- pnpm
+- Docker or another Supabase-compatible container runtime
+
+## Local setup
+
+Install dependencies and start the local Supabase stack:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install --frozen-lockfile
+pnpm supabase start
+pnpm supabase seed buckets --local --yes
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create the local environment file:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+cp .env.example .env.local
+pnpm supabase status
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The checked-in example already uses the default local API URL. Copy the `anon key` reported by `pnpm supabase status` into `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`, then start the app:
 
-## Learn More
+```bash
+pnpm dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The local seed includes a demo account:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+michi@seed.local
+michi-demo-password
+```
 
-## Deploy on Vercel
+These are development-only credentials. Never use the seed or its known passwords in production.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Route | Purpose |
+| --- | --- |
+| `/` | Postcard Club landing page and seasonal theme selector |
+| `/login` | Local email/password sign-in and sign-up |
+| `/dashboard` | Curated and personal walk gallery |
+| `/dashboard/new` | Current walk creation flow |
+| `/dashboard/walks/[id]` | Authenticated walk detail and replay |
+| `/walks/[id]` | Read-only public walk page; anonymous private media is not complete |
+| `/palettes` | Internal palette reference |
+
+## Checks available today
+
+The repository does not yet have unit or browser test runners. Until the first roadmap PR lands, use:
+
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm supabase db lint --local --level warning --fail-on warning
+pnpm build
+```
+
+The roadmap adds Vitest, pgTAP, Playwright, and CI before feature work depends on them.
+
+To smoke-test the production build locally:
+
+```bash
+pnpm build
+pnpm start
+```
+
+## Local database maintenance
+
+Resetting the local database is destructive. It reapplies migrations and `supabase/seed.sql`:
+
+```bash
+pnpm supabase db reset --local
+pnpm supabase seed buckets --local --yes
+```
+
+After changing the schema, regenerate the checked-in database types:
+
+```bash
+pnpm supabase gen types --local --schema public > src/lib/supabase/database.types.ts
+```
+
+Useful lifecycle commands:
+
+```bash
+pnpm supabase status
+pnpm supabase stop
+```
+
+## Product scope
+
+- The marketing page lives at `/`; the signed-in gallery lives at `/dashboard`.
+- Spring, Summer, Autumn, and Winter themes are approved, including light and dark modes.
+- The photo-first import, replay, and Layered Memory paths are the v1 priority.
+- Existing GPS recording, audio, and social code should remain stable but should not expand during the v1 work.
+- Install prompts, offline maps/media, and anonymous share links are cuttable. Core import and replay correctness are not.
+
+## Deployment
+
+There is no checked-in production deployment runbook yet. Do not infer production secrets or run remote Supabase reset/link commands from the local setup above. Production environment validation, OAuth callbacks, migrations, rollback, security headers, and release smoke tests are tracked in the final roadmap PR.

@@ -310,7 +310,7 @@ export function CreateWalkPanel() {
             {drawPoints.length} point{drawPoints.length === 1 ? "" : "s"} ·{" "}
             {formatDistance(distanceM)}
           </p>
-          {errors.path && <p className="text-sm text-accent">{errors.path}</p>}
+          {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
           {drawPoints.length > 0 && (
             <ol className="flex max-h-48 flex-col gap-1 overflow-y-auto">
               {drawPoints.map(([lng, lat], i) => (
@@ -448,7 +448,7 @@ export function CreateWalkPanel() {
               </button>
             )}
           </div>
-          {errors.path && <p className="text-sm text-accent">{errors.path}</p>}
+          {errors.path && <p className="text-sm text-accent-text">{errors.path}</p>}
         </section>
       )}
 
@@ -490,7 +490,7 @@ export function CreateWalkPanel() {
                       aria-invalid={Boolean(errors[`alt-${m.id}`])}
                     />
                     {errors[`alt-${m.id}`] && (
-                      <span className="text-accent">
+                      <span className="text-accent-text">
                         {errors[`alt-${m.id}`]}
                       </span>
                     )}
@@ -547,7 +547,7 @@ export function CreateWalkPanel() {
             className={inputClass}
             aria-invalid={Boolean(errors.title)}
           />
-          {errors.title && <span className="text-accent">{errors.title}</span>}
+          {errors.title && <span className="text-accent-text">{errors.title}</span>}
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Region (optional)

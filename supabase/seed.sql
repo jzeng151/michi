@@ -100,26 +100,26 @@ insert into public.walks (id, owner_id, title, description, region, path, distan
 -- ============================================================ media pins (seed art in public 'curated' bucket)
 
 insert into public.walk_media (walk_id, kind, bucket, storage_path, alt_text, caption, lat, lng, sort_index) values
-('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'sakura-canal.svg',
+('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'sakura-canal.webp',
  'Cherry blossoms arching over a narrow stone canal', 'The canal in full bloom near Ginkaku-ji', 35.0254, 135.7946, 0),
-('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'stone-bridge.svg',
- 'A small stone footbridge crossing the canal between temples', 'One of the little bridges midway', 35.0186, 135.7946, 1),
-('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'cedar-trail.svg',
- 'Stone path winding through tall cedar forest', 'The old road climbs into the cedars', 35.5455, 137.5808, 0),
-('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'post-town.svg',
+('10000000-0000-4000-8000-000000000001', 'photo', 'curated', 'stone-bridge.webp',
+ 'A small stone bridge beside the tree-lined Philosopher''s Path canal', 'Canal-side path and bridge near Ginkaku-ji', 35.0186, 135.7946, 1),
+('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'cedar-trail.webp',
+ 'A Nakasendo trail sign beneath autumn maple trees between Magome and Tsumago', 'On the old road between Magome and Tsumago', 35.5455, 137.5808, 0),
+('10000000-0000-4000-8000-000000000002', 'photo', 'curated', 'post-town.webp',
  'Wooden Edo-period houses lining a sloped village street', 'Tsumago, lovingly preserved', 35.5745, 137.5938, 1),
-('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'coastal-wave.svg',
- 'Waves rolling onto a dark sand beach under a wide sky', 'Yuigahama, looking toward Enoshima', 35.3084, 139.5301, 0),
-('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'sunset-cape.svg',
- 'Sun setting behind a rocky headland over the sea', 'Inamuragasaki at golden hour', 35.3040, 139.5227, 1),
-('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'neon-crossing.svg',
- 'Crowds crossing a wide intersection lit by neon signs', 'The scramble, mid-crossing', 35.6591, 139.7006, 0),
-('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'lantern-alley.svg',
- 'A narrow alley of izakaya lanterns glowing red and gold', 'Backstreet lanterns off Center-gai', 35.6628, 139.6987, 1),
-('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'vermilion-gates.svg',
+('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'coastal-wave.webp',
+ 'A wide sandy beach and calm sea beneath a pale sky at Yuigahama', 'Yuigahama, looking along the Kamakura coast', 35.3084, 139.5301, 0),
+('10000000-0000-4000-8000-000000000003', 'photo', 'curated', 'sunset-cape.webp',
+ 'Enoshima and Mount Fuji seen across the coast from Inamuragasaki', 'The coastal view from Inamuragasaki', 35.3040, 139.5227, 1),
+('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'neon-crossing.webp',
+ 'Shibuya Scramble Crossing beneath illuminated signs at night', 'The scramble after dark', 35.6591, 139.7006, 0),
+('10000000-0000-4000-8000-000000000004', 'photo', 'curated', 'lantern-alley.webp',
+ 'Shibuya Center-gai lit by storefront signs after dark', 'Center-gai after dark', 35.6628, 139.6987, 1),
+('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'vermilion-gates.webp',
  'A tunnel of closely spaced vermilion torii gates', 'Senbon torii, just after dawn', 34.9679, 135.7756, 0),
-('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'fox-shrine.svg',
- 'A stone fox statue with a red bib beside a small shrine', 'Guardian fox at Okusha', 34.9680, 135.7773, 1);
+('10000000-0000-4000-8000-000000000005', 'photo', 'curated', 'fox-shrine.webp',
+ 'The red and white Okusha Hohaisho shrine beneath dense trees', 'Okusha Hohaisho at Fushimi Inari', 34.9680, 135.7773, 1);
 
 -- ============================================================ likes (recent, so Trending has data)
 

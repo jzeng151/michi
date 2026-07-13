@@ -9,11 +9,11 @@ import type { LineString } from "@/lib/types";
 export function useAccentColor(): string {
   const { season, resolvedMode } = useTheme();
   return useMemo(() => {
-    if (typeof document === "undefined") return "#a84455";
+    if (typeof document === "undefined") return "#b1476a";
     return (
       getComputedStyle(document.documentElement)
         .getPropertyValue("--accent")
-        .trim() || "#a84455"
+        .trim() || "#b1476a"
     );
     // The CSS variable changes with the html[data-*] attributes, which these
     // two values track — the linter can't see that data flow.

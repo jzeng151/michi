@@ -41,7 +41,7 @@ export function VisibilityToggle({
       >
         {visibility === "public" ? "Make private" : "Share publicly"}
       </button>
-      {error && <span className="text-sm text-accent">{error}</span>}
+      {error && <span className="text-sm text-accent-text">{error}</span>}
     </span>
   );
 }

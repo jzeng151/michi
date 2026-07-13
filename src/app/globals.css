@@ -1,70 +1,72 @@
 @import "tailwindcss";
 
 /*
- * Michi theme system: two axes on <html> — data-season (spring|summer|autumn|winter)
+ * Michi theme system: two axes on <html>: data-season (spring|summer|autumn|winter)
  * and data-mode (light|dark). Components only use the semantic utilities below;
  * adding a palette touches this file only.
  */
 
 :root,
 [data-season="spring"][data-mode="light"] {
-  --canvas: #faf6f1;
-  --surface: #ffffff;
-  --ink: #2b2724;
-  --ink-muted: #675d57;
-  --accent: #a84455;
+  --canvas: #f7f4f6;
+  --surface: #fffdfe;
+  --ink: #251e23;
+  --ink-muted: #67535f;
+  --accent: #b1476a;
   --accent-ink: #ffffff;
-  --line: #e5dcd2;
-  --wash: #f3e7e4;
-  --focus: #7d3341;
+  --line: #8f7b84;
+  --wash: #f1e2e8;
+  --focus: #7e1f42;
 }
 
 [data-season="spring"][data-mode="dark"] {
-  --canvas: #201c1e;
-  --surface: #2a2528;
-  --ink: #f0e8e6;
-  --ink-muted: #b3a6a4;
-  --accent: #e58e9e;
-  --accent-ink: #2b1218;
-  --line: #3d3538;
-  --wash: #38292e;
-  --focus: #f2b6c1;
+  --canvas: #201a1e;
+  --surface: #2b2328;
+  --ink: #f4eaf0;
+  --ink-muted: #c0aeb8;
+  --accent: #d993aa;
+  --accent-ink: #2b101b;
+  --line: #4c3b44;
+  --wash: #382b32;
+  --focus: #f0b2c6;
 }
 
 [data-season="summer"][data-mode="light"] {
-  --canvas: #f5f7f0;
-  --surface: #ffffff;
-  --ink: #24291f;
-  --ink-muted: #59634f;
-  --accent: #3e6b4f;
-  --accent-ink: #ffffff;
-  --line: #dde3d3;
-  --wash: #e7eedd;
-  --focus: #2c4f3a;
+  --canvas: #f1f6f7;
+  --surface: #fcfeff;
+  --ink: #192629;
+  --ink-muted: #4a6065;
+  --accent: #4d9b75;
+  --accent-ink: #10291d;
+  --accent-text: #1f684a;
+  --line: #6c858b;
+  --wash: #dceef1;
+  --focus: #1f684a;
 }
 
 [data-season="summer"][data-mode="dark"] {
-  --canvas: #1b201a;
-  --surface: #242b22;
-  --ink: #e9ede2;
-  --ink-muted: #a8b39d;
-  --accent: #8fbf9a;
-  --accent-ink: #14231a;
-  --line: #333c30;
-  --wash: #2b3628;
-  --focus: #b4d9bd;
+  --canvas: #172225;
+  --surface: #203033;
+  --ink: #eaf2f3;
+  --ink-muted: #acbdc0;
+  --accent: #86c8aa;
+  --accent-ink: #10291d;
+  --accent-text: #a2dbbf;
+  --line: #3b4d51;
+  --wash: #263a3e;
+  --focus: #a2dbbf;
 }
 
 [data-season="autumn"][data-mode="light"] {
-  --canvas: #faf4ea;
-  --surface: #fffdf8;
-  --ink: #2e2620;
-  --ink-muted: #6b5d4f;
-  --accent: #a3511f;
+  --canvas: #f7f3f0;
+  --surface: #fffefd;
+  --ink: #2b211d;
+  --ink-muted: #67564e;
+  --accent: #a13f1c;
   --accent-ink: #ffffff;
-  --line: #e8dcc9;
-  --wash: #f4e7d3;
-  --focus: #7c3d16;
+  --line: #8d7a70;
+  --wash: #f2e3dc;
+  --focus: #7b2d11;
 }
 
 [data-season="autumn"][data-mode="dark"] {
@@ -80,15 +82,15 @@
 }
 
 [data-season="winter"][data-mode="light"] {
-  --canvas: #f4f6f7;
-  --surface: #ffffff;
-  --ink: #222629;
-  --ink-muted: #556066;
-  --accent: #3a5a72;
+  --canvas: #f1f4f7;
+  --surface: #fcfeff;
+  --ink: #1b232b;
+  --ink-muted: #4f5e6c;
+  --accent: #4d7199;
   --accent-ink: #ffffff;
-  --line: #dbe1e4;
-  --wash: #e5ebee;
-  --focus: #2a4356;
+  --line: #6f818f;
+  --wash: #dce7f0;
+  --focus: #244464;
 }
 
 [data-season="winter"][data-mode="dark"] {
@@ -113,6 +115,7 @@
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text, var(--accent));
   --color-accent-ink: var(--accent-ink);
   --color-line: var(--line);
   --color-wash: var(--wash);
@@ -125,6 +128,39 @@ body {
   background: var(--canvas);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+}
+
+.concept-film {
+  --canvas: #f1efeb;
+  --surface: #faf8f4;
+  --ink: #1f1e1c;
+  --ink-muted: #66625d;
+  --accent: #9f3447;
+  --accent-ink: #ffffff;
+  --line: #d8d3cc;
+  --wash: #e5e1da;
+  --focus: #7d2938;
+}
+
+[data-mode="dark"] .concept-film {
+  --canvas: #171716;
+  --surface: #211f1e;
+  --ink: #f1eee9;
+  --ink-muted: #b4afa8;
+  --accent: #df8796;
+  --accent-ink: #261216;
+  --line: #3b3835;
+  --wash: #282523;
+  --focus: #f1a9b4;
+}
+
+@keyframes film-drift {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1.1);
+  }
 }
 
 /* Visible, high-contrast focus for keyboard users; never removed, only styled. */

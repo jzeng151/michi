@@ -3,7 +3,7 @@ import { Zen_Kaku_Gothic_New, Shippori_Mincho } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import "./globals.css";
 
-// preload: false is deliberate — CJK faces ship hundreds of unicode-range
+// preload: false is deliberate. CJK faces ship hundreds of unicode-range
 // slices, and preloading them all costs ~10MB; on-demand loading fetches
 // only the slices the page actually renders.
 const zenKaku = Zen_Kaku_Gothic_New({
@@ -22,11 +22,11 @@ const shippori = Shippori_Mincho({
 
 export const metadata: Metadata = {
   title: {
-    default: "Michi — walk Japan, keep the memory",
-    template: "%s · Michi",
+    default: "Michi | A memory palace for Japan",
+    template: "%s | Michi",
   },
   description:
-    "Curated walking trails and scenic routes across Japan. Record your own walks with photos and audio notes, then replay them as living memories.",
+    "Import photos from a walk in Japan, place each memory on the map, and replay the path alongside curated cultural stories.",
 };
 
 export const viewport: Viewport = {

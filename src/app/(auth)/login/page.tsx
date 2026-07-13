@@ -93,7 +93,7 @@ function LoginForm() {
         className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-8 shadow-sm"
       >
         <header className="flex flex-col gap-1 text-center">
-          <p className="font-display text-2xl text-accent" aria-hidden="true">
+          <p className="font-display text-2xl text-accent-text" aria-hidden="true">
             道
           </p>
           <h1 className="font-display text-2xl font-semibold">
@@ -122,7 +122,7 @@ function LoginForm() {
               aria-describedby={fieldErrors.email ? "email-error" : undefined}
             />
             {fieldErrors.email && (
-              <p id="email-error" className="text-sm text-accent">
+              <p id="email-error" className="text-sm text-accent-text">
                 {fieldErrors.email}
               </p>
             )}
@@ -148,7 +148,7 @@ function LoginForm() {
               }
             />
             {fieldErrors.password && (
-              <p id="password-error" className="text-sm text-accent">
+              <p id="password-error" className="text-sm text-accent-text">
                 {fieldErrors.password}
               </p>
             )}

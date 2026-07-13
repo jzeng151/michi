@@ -35,7 +35,7 @@ export default async function DashboardLayout({
           href="/dashboard"
           className="font-display text-lg font-semibold text-ink"
         >
-          <span className="text-accent" aria-hidden="true">
+          <span className="text-accent-text" aria-hidden="true">
             道
           </span>{" "}
           Michi

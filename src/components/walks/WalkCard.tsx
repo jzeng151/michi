@@ -19,7 +19,7 @@ export function WalkCard({ walk }: { walk: WalkSummary }) {
         ) : (
           <span
             aria-hidden="true"
-            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-wash font-display text-xl text-accent"
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-wash font-display text-xl text-accent-text"
           >
             道
           </span>

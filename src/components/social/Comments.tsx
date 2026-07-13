@@ -114,7 +114,7 @@ export function Comments({
             aria-invalid={Boolean(error)}
           />
           <div aria-live="polite">
-            {error && <p className="text-sm text-accent">{error}</p>}
+            {error && <p className="text-sm text-accent-text">{error}</p>}
           </div>
           <button
             type="submit"

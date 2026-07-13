@@ -125,8 +125,8 @@ export function MediaCapture({
         )}
       </div>
       <div aria-live="polite">
-        {recording && <p className="text-sm text-accent">Recording audio…</p>}
-        {audioError && <p className="text-sm text-accent">{audioError}</p>}
+        {recording && <p className="text-sm text-accent-text">Recording audio…</p>}
+        {audioError && <p className="text-sm text-accent-text">{audioError}</p>}
       </div>
     </div>
   );
