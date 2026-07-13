@@ -23,8 +23,7 @@ Install dependencies and start the local Supabase stack:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm supabase start
-pnpm supabase seed buckets --local --yes
+pnpm db:start
 ```
 
 Create the local environment file:
@@ -63,18 +62,28 @@ These are development-only credentials. Never use the seed or its known password
 | `/walks/[id]` | Read-only public walk page; anonymous private media is not complete |
 | `/palettes` | Internal palette reference |
 
-## Checks available today
+## Quality checks
 
-The repository does not yet have unit or browser test runners. Until the first roadmap PR lands, use:
+Install Chromium once before the first browser-test run:
+
+```bash
+pnpm exec playwright install chromium
+```
+
+With local Supabase running and `.env.local` configured, run:
 
 ```bash
 pnpm lint
-pnpm exec tsc --noEmit
+pnpm typecheck
+pnpm test
 pnpm supabase db lint --local --level warning --fail-on warning
+pnpm test:db
 pnpm build
+pnpm test:e2e
 ```
 
-The roadmap adds Vitest, pgTAP, Playwright, and CI before feature work depends on them.
+Vitest covers pure TypeScript logic, pgTAP covers database authorization, and Chromium Playwright covers the seeded user journey with `axe-core`. CI runs the same gate on every push and pull request.
+Playwright serves the most recent production build on port 3100, so run `pnpm build` before `pnpm test:e2e` locally.
 
 To smoke-test the production build locally:
 
@@ -102,7 +111,7 @@ Useful lifecycle commands:
 
 ```bash
 pnpm supabase status
-pnpm supabase stop
+pnpm db:stop
 ```
 
 ## Product scope

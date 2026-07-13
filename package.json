@@ -2,11 +2,18 @@
   "name": "michi",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --dir src",
+    "test:db": "supabase test db",
+    "test:e2e": "playwright test",
+    "db:start": "supabase start && supabase seed buckets --local --yes",
+    "db:stop": "supabase stop"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -24,6 +31,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -34,6 +42,7 @@
     "eslint-config-next": "16.2.9",
     "supabase": "^2.109.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
