@@ -1,7 +1,7 @@
 "use client";
 
 import { Marker } from "react-map-gl/maplibre";
-import type { MediaPin } from "@/lib/types";
+import type { WalkPin } from "@/lib/types";
 
 /**
  * MapLibre gives every marker container role="button", so the visual here is
@@ -14,7 +14,7 @@ export function MediaMarker({
   index,
   onSelect,
 }: {
-  pin: MediaPin;
+  pin: WalkPin;
   index: number;
   onSelect?: (id: string) => void;
 }) {
@@ -39,13 +39,19 @@ export function MediaMarker({
           />
         ) : (
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-wash text-lg">
-            {pin.kind === "photo" ? "🖼" : "🎙"}
+            {pin.kind === "photo"
+              ? "🖼"
+              : pin.kind === "audio"
+                ? "🎙"
+                : "📝"}
           </span>
         )}
       </span>
       <span className="sr-only">
-        {(pin.listIndex ?? index) + 1}. {pin.kind === "photo" ? "Photo" : "Audio"}:{" "}
-        {pin.alt ?? pin.caption ?? pin.kind}
+        {(pin.listIndex ?? index) + 1}.{" "}
+        {pin.kind === "note"
+          ? `Note: ${pin.note}`
+          : `${pin.kind === "photo" ? "Photo" : "Audio"}: ${pin.alt ?? pin.caption ?? pin.kind}`}
       </span>
     </Marker>
   );

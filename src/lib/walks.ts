@@ -4,9 +4,9 @@ import { lineStringFromCoordinates, pathDistance } from "./geo";
 import { isHeicMime, resolveMediaUrls } from "./media-url";
 import type {
   LineString,
-  MediaPin,
   MediaRow,
   MediaStop,
+  WalkPin,
   WalkStop,
   WalkRow,
   WalkStopRow,
@@ -131,7 +131,7 @@ export type WalkDetailData = {
   ownerName: string;
   ownerUsername: string;
   media: WalkStop[];
-  pins: MediaPin[];
+  pins: WalkPin[];
 };
 
 type DetailRow = WalkRow & {
@@ -188,8 +188,8 @@ export async function fetchWalkDetail(
     };
     return [item];
   });
-  const pins: MediaPin[] = media.flatMap((item, listIndex) =>
-    item.kind === "note" || item.lat === null || item.lng === null
+  const pins: WalkPin[] = media.flatMap((item, listIndex) =>
+    item.lat === null || item.lng === null
       ? []
       : [{ ...item, lat: item.lat, lng: item.lng, listIndex }],
   );

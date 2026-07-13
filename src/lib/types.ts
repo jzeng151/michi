@@ -60,9 +60,17 @@ export type WalkStop = MediaStop | NoteStop;
 export type MediaPin = MediaStop & {
   lat: number;
   lng: number;
-  /** Position in the complete media list, including unplaced stops. */
+  /** Position in the complete stop list, including unplaced stops. */
   listIndex?: number;
 };
+
+export type NotePin = NoteStop & {
+  lat: number;
+  lng: number;
+  listIndex?: number;
+};
+
+export type WalkPin = MediaPin | NotePin;
 
 export type CommentItem = {
   id: string;

@@ -396,6 +396,51 @@ test("preserves a browser draft when the session expires before save", async ({
   await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
 });
 
+test("saves a new walk when browser draft recovery is blocked", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(IDBFactory.prototype, "open", {
+      configurable: true,
+      value() {
+        const calls = Number(sessionStorage.getItem("idb-open-calls") ?? 0) + 1;
+        sessionStorage.setItem("idb-open-calls", String(calls));
+        throw new DOMException("IndexedDB is blocked", "SecurityError");
+      },
+    });
+  });
+
+  await page.goto("/dashboard/new");
+  await expect(
+    page.getByRole("heading", { name: "Draft recovery failed" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Start without browser recovery" })
+    .click();
+  await expect(
+    page.getByText(
+      "Browser recovery is unavailable. This walk only lasts in this tab until saved.",
+    ),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add note-only stop" }).click();
+  await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("No local storage.");
+  await page.getByLabel("Title").fill("Storage fallback walk");
+  await page.waitForTimeout(500);
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("idb-open-calls")),
+  ).toBe("1");
+
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
+  await expect(
+    page.getByRole("heading", { name: "Storage fallback walk" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("idb-open-calls")),
+  ).toBe("1");
+});
+
 test("opens and replays the seeded photo walk without social controls", async ({
   page,
 }) => {

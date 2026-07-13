@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { LineString, MediaPin } from "@/lib/types";
+import type { LineString, MediaPin, WalkPin } from "@/lib/types";
 
 export type OverviewPoint = {
   id: string;
@@ -8,7 +8,7 @@ export type OverviewPoint = {
 };
 
 export type MapDisplay =
-  | { kind: "walk"; walkId: string; path: LineString | null; media: MediaPin[] }
+  | { kind: "walk"; walkId: string; path: LineString | null; media: WalkPin[] }
   | { kind: "overview"; points: OverviewPoint[] }
   | {
       kind: "draft";

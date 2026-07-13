@@ -87,8 +87,20 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     "placed-1",
     "placed-2",
   ]);
-  expect(detail?.pins.map(({ id }) => id)).toEqual(["placed-1", "placed-2"]);
-  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([2, 3]);
+  expect(detail?.pins.map(({ id }) => id)).toEqual([
+    "note-1",
+    "placed-1",
+    "placed-2",
+  ]);
+  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([1, 2, 3]);
+  expect(detail?.pins[0]).toEqual({
+    id: "note-1",
+    kind: "note",
+    note: "Tea beside the old cedar.",
+    lat: noteCoordinate[1],
+    lng: noteCoordinate[0],
+    listIndex: 1,
+  });
   expect(detail?.media[1]).toEqual({
     id: "note-1",
     kind: "note",
@@ -100,7 +112,7 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     mimeType: "image/heic",
     url: null,
   });
-  expect(detail?.pins[0]).toMatchObject({
+  expect(detail?.pins[1]).toMatchObject({
     mimeType: "image/heic",
     url: null,
   });

@@ -79,6 +79,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   const persistQueue = useRef<Promise<void>>(Promise.resolve());
   const draftRef = useRef<WalkDraft | null>(null);
   const skipFlush = useRef(false);
+  const browserRecoveryEnabled = useRef(true);
 
   const updateDraft = useCallback((change: (current: WalkDraft) => WalkDraft) => {
     setDraft((current) => (current ? change(current) : current));
@@ -98,6 +99,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   const persist = useCallback(
     (value: WalkDraft) => {
+      if (!browserRecoveryEnabled.current) return Promise.resolve();
       const next = persistQueue.current
         .catch(() => undefined)
         .then(() => repository.save(value));
@@ -545,7 +547,9 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     } = await supabase.auth.getSession();
     if (userError || sessionError || !user || !session || user.id !== userId) {
       setSaveMessage(
-        "Your session expired. Sign in again; this draft is saved on this browser.",
+        browserRecoveryEnabled.current
+          ? "Your session expired. Sign in again; this draft is saved on this browser."
+          : "Your session expired. Sign in again before saving; this walk is only open in this tab.",
       );
       setSaving(false);
       return;
@@ -714,6 +718,12 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
     skipFlush.current = true;
     setConfirmedWalkId(working.id);
+    if (!browserRecoveryEnabled.current) {
+      previewUrls.current.forEach(URL.revokeObjectURL);
+      previewUrls.current.clear();
+      router.push(`/dashboard/walks/${working.id}`);
+      return;
+    }
     try {
       await repository.clear(userId);
     } catch (error) {
@@ -737,7 +747,9 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
           {restoreFailure}
         </p>
         <p className="text-sm text-ink-muted">
-          Retry the read, or discard this browser copy to start a new walk.
+          Retry the read, discard this browser copy, or start a new walk without
+          browser recovery. Starting without recovery leaves any existing browser
+          draft untouched, but the new walk only lasts in this tab until saved.
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={button} onClick={() => window.location.reload()}>
@@ -760,6 +772,20 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
             }}
           >
             Discard browser draft
+          </button>
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              browserRecoveryEnabled.current = false;
+              setRestoreFailure(null);
+              setDraftNotice(
+                "Browser recovery is unavailable. This walk only lasts in this tab until saved.",
+              );
+              setDraft(newWalkDraft(userId));
+            }}
+          >
+            Start without browser recovery
           </button>
         </div>
       </div>
