@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { pathDistance } from "./geo";
+import { mergeReplayEntries } from "./layered-memory";
 import { isHeicMime } from "./media-url";
 import { fetchBrowseLists, fetchWalkDetail } from "./walks";
 
@@ -108,14 +109,14 @@ it("orders stops chronologically and derives a route from placed stops", async (
   const lists = await fetchBrowseLists(browseClient, row.owner_id);
 
   expect(detail?.media.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
-    ["placed-2", "2026-01-01T00:00:00Z"],
-    ["placed-1", "2026-01-02T00:00:00Z"],
-    ["unplaced", null],
+    ["stop-3", "2026-01-01T00:00:00Z"],
+    ["stop-2", "2026-01-02T00:00:00Z"],
+    ["stop-1", null],
     ["note-1", null],
   ]);
   expect(detail?.pins.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
-    ["placed-2", "2026-01-01T00:00:00Z"],
-    ["placed-1", "2026-01-02T00:00:00Z"],
+    ["stop-3", "2026-01-01T00:00:00Z"],
+    ["stop-2", "2026-01-02T00:00:00Z"],
     ["note-1", null],
   ]);
   expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([0, 1, 3]);
@@ -150,6 +151,16 @@ it("orders stops chronologically and derives a route from placed stops", async (
     title: "Post town",
     url: expect.stringContaining("/curated/story.webp"),
   });
+  expect(
+    detail &&
+      mergeReplayEntries(detail.media, detail.curatedMatches).map(({ id }) => id),
+  ).toEqual([
+    "stop-3",
+    "story:stop-3:waypoint-1",
+    "stop-2",
+    "stop-1",
+    "note-1",
+  ]);
   expect(lists.mine[0].cover?.alt).toBe("placed-2");
   expect(lists.mine[0].start).toEqual(coordinates[1]);
   expect(detail?.walk.path?.coordinates).toEqual(route);

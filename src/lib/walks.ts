@@ -222,7 +222,7 @@ export async function fetchWalkDetail(
     if (!stop.walk_media) return [];
     const row = stop.walk_media;
     const item: MediaStop = {
-      id: row.id,
+      id: stop.id,
       kind: stop.kind,
       url: isHeicMime(row.mime_type)
         ? null
