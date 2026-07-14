@@ -188,6 +188,46 @@ test("imports a photo batch without losing failed files", async ({ page }) => {
   await expectNoHighImpactViolations(page);
 });
 
+test("restores rapid photo import batches with unique order", async ({ page }) => {
+  await page.goto("/dashboard/new");
+  await page.locator('input[type="file"]').evaluate((input) => {
+    const files = (name: string) => {
+      const transfer = new DataTransfer();
+      transfer.items.add(
+        new File(["not an image"], name, { type: "image/jpeg" }),
+      );
+      return transfer.files;
+    };
+    const first = files("rapid-first.jpg");
+    const second = files("rapid-second.jpg");
+    let nested = false;
+    let current = first;
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      get: () => current,
+    });
+    Object.defineProperty(input, "value", {
+      configurable: true,
+      get: () => "",
+      set: () => {
+        if (nested) return;
+        nested = true;
+        current = second;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+    });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  await expect(page.getByText("2 of 2 photos processed")).toBeVisible();
+  await expect.poll(() => storedDraftSummary(page)).toMatchObject({
+    descriptions: ["", ""],
+  });
+  await page.reload();
+  await expect(page.getByText("Draft restored from this browser.")).toBeVisible();
+  await expect(page.getByText("2 of 2 photos processed")).toBeVisible();
+});
+
 test("restores and saves manually placed photos with a note-only stop", async ({
   page,
 }) => {
@@ -611,7 +651,57 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
     .click();
   await expect(page.getByLabel("Title")).toHaveValue("Cleanup blocked walk");
 
+  let failUpload = true;
+  await page.route("**/storage/v1/object/walk-media/**", async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.continue();
+      return;
+    }
+    if (failUpload) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Forced upload failure" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  const [newPhoto] = await importUnplacedPhotos(page, 1);
+  await fillPhotoDescriptions(page, [newPhoto], "New upload");
   await page.getByLabel("Title").fill("Cleanup blocked walk updated");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page.getByText(/1 photo failed to upload/)).toBeVisible();
+  const newPhotoCard = photoCard(page, newPhoto.name);
+  await newPhotoCard
+    .getByRole("button", { name: `Remove ${newPhoto.name}` })
+    .click();
+  await expect(newPhotoCard).toHaveCount(0);
+
+  failUpload = false;
+  let failRpc = true;
+  await page.route("**/rest/v1/rpc/save_walk_draft", async (route) => {
+    if (failRpc) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Ambiguous save response" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  const [ambiguousPhoto] = await importUnplacedPhotos(page, 1);
+  await fillPhotoDescriptions(page, [ambiguousPhoto], "Ambiguous upload");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page.getByText(/Couldn't confirm the latest save/)).toBeVisible();
+  await expect(
+    photoCard(page, ambiguousPhoto.name).getByRole("button", {
+      name: `Remove ${ambiguousPhoto.name}`,
+    }),
+  ).toHaveCount(0);
+
+  failRpc = false;
   await page.getByRole("button", { name: "Save walk" }).click();
   await expect(page.getByRole("heading", { name: "Walk saved" })).toBeVisible();
   await page.getByRole("link", { name: "Open saved walk" }).click();

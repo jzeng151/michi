@@ -330,7 +330,6 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   function onPhotos(files: File[]) {
     if (!draft) return;
-    const startIndex = draft.nextIndex;
     const ids = files.map(() => crypto.randomUUID());
     const stopIds = files.map(() => crypto.randomUUID());
     const placeholders = files.map((file, position): DraftPhoto => {
@@ -346,7 +345,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         file,
         originalName: file.name,
         mime,
-        originalIndex: startIndex + position,
+        originalIndex: position,
         status: "parsing",
         error: null,
         capturedAt: null,
@@ -363,14 +362,23 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         },
       };
     });
-    updateDraft((current) => ({
-      ...current,
-      nextIndex: Math.max(current.nextIndex, startIndex + files.length),
-      photos: sortPhotoImports([...current.photos, ...placeholders]),
-    }));
+    updateDraft((current) => {
+      const startIndex = current.nextIndex;
+      return {
+        ...current,
+        nextIndex: startIndex + files.length,
+        photos: sortPhotoImports([
+          ...current.photos,
+          ...placeholders.map((photo, position) => ({
+            ...photo,
+            originalIndex: startIndex + position,
+          })),
+        ]),
+      };
+    });
 
-    void parsePhotoBatch(files, startIndex, (result: PhotoImportResult) => {
-      const id = ids[result.originalIndex - startIndex];
+    void parsePhotoBatch(files, 0, (result: PhotoImportResult) => {
+      const id = ids[result.originalIndex];
       updateDraft((current) => ({
         ...current,
         photos: sortPhotoImports(
@@ -937,8 +945,8 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   function isPhotoRemovalBlocked(photo: DraftPhoto) {
     return (
       (Boolean(existingWalkId) || confirmationPending) &&
-      (photo.upload.attempted ||
-        (photo.status === "ready" && restoredPhotoIds.has(photo.id)))
+      photo.status === "ready" &&
+      (restoredPhotoIds.has(photo.id) || photo.upload.status === "uploaded")
     );
   }
 
