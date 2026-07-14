@@ -29,6 +29,7 @@ export type WalkStopRow = {
   id: string;
   kind: "photo" | "audio" | "note";
   sort_index: number;
+  captured_at: string | null;
   lat: number | null;
   lng: number | null;
   note: string | null;
@@ -42,6 +43,7 @@ export type MediaStop = {
   mimeType: string | null;
   alt: string | null;
   caption: string | null;
+  capturedAt: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -50,6 +52,7 @@ export type NoteStop = {
   id: string;
   kind: "note";
   note: string;
+  capturedAt: string | null;
   lat: number | null;
   lng: number | null;
 };

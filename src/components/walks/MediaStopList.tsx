@@ -38,6 +38,8 @@ export function MediaStopList({ media }: { media: WalkStop[] }) {
                 <img
                   src={pin.url}
                   alt={pin.alt ?? ""}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full rounded-lg object-cover"
                 />
               ) : (

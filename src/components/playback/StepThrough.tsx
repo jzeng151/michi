@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type MapRef } from "react-map-gl/maplibre";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { MediaMarker } from "@/components/map/MediaMarker";
 import { isHeicMime } from "@/lib/media-url";
-import type { LineString, WalkPin } from "@/lib/types";
+import type { LineString, WalkPin, WalkStop } from "@/lib/types";
 
 /**
  * Non-animated playback: fit the route once, page through the stops.
@@ -19,15 +19,25 @@ export function StepThrough({
   media,
 }: {
   title: string;
-  path: LineString;
-  media: WalkPin[];
+  path: LineString | null;
+  media: WalkStop[];
 }) {
   const mapRef = useRef<MapRef>(null);
   const [index, setIndex] = useState(0);
   const stop = media[index] ?? null;
+  const pins = useMemo(
+    () =>
+      media.flatMap<WalkPin>((item, listIndex) =>
+        item.lng === null || item.lat === null
+          ? []
+          : [{ ...item, lng: item.lng, lat: item.lat, listIndex }],
+      ),
+    [media],
+  );
+  const activePin = pins.find(({ listIndex }) => listIndex === index) ?? null;
 
   useEffect(() => {
-    if (!stop) return;
+    if (!stop || stop.lng === null || stop.lat === null) return;
     const reduce = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -38,7 +48,9 @@ export function StepThrough({
     });
   }, [stop]);
 
-  const [lng, lat] = path.coordinates[0];
+  const coordinates =
+    path?.coordinates ?? pins.map(({ lng, lat }) => [lng, lat] as [number, number]);
+  const start = coordinates[0];
 
   return (
     <div className="flex h-full flex-col">
@@ -46,9 +58,18 @@ export function StepThrough({
         <MapCanvas
           ref={mapRef}
           label={`Route map: ${title}`}
-          initialViewState={{ longitude: lng, latitude: lat, zoom: 13 }}
+          initialViewState={
+            start
+              ? { longitude: start[0], latitude: start[1], zoom: 13 }
+              : undefined
+          }
           onLoad={() => {
-            const coords = path.coordinates;
+            const coords = coordinates;
+            if (coords.length === 0) return;
+            if (coords.length === 1) {
+              mapRef.current?.jumpTo({ center: coords[0], zoom: 15.5 });
+              return;
+            }
             let minLng = Infinity,
               minLat = Infinity,
               maxLng = -Infinity,
@@ -68,10 +89,13 @@ export function StepThrough({
             );
           }}
         >
-          <RouteLayer path={path} />
-          {media.map((pin, i) => (
-            <MediaMarker key={pin.id} pin={pin} index={i} onSelect={() => setIndex(i)} />
-          ))}
+          {path && <RouteLayer path={path} />}
+          {activePin && (
+            <MediaMarker
+              pin={activePin}
+              index={index}
+            />
+          )}
         </MapCanvas>
       </div>
       <div
@@ -80,7 +104,7 @@ export function StepThrough({
       >
         {media.length === 0 ? (
           <p className="text-sm text-ink-muted">
-            This walk has no located stops yet — enjoy the route.
+            This walk has no stops yet — enjoy the route.
           </p>
         ) : (
           <>

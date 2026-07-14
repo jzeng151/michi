@@ -8,6 +8,7 @@ import {
 const walkId = "10000000-0000-4000-8000-000000000002";
 const walkPath = `/dashboard/walks/${walkId}`;
 const walkTitle = "Nakasendo: Magome to Tsumago";
+const replayStopCount = Number(process.env.REPLAY_STOP_COUNT ?? 20);
 
 type StoredDraftSummary = {
   title: string;
@@ -70,6 +71,56 @@ async function storedDraftSummary(
           };
         };
       }),
+  );
+}
+
+async function placeStoredDraftPhotos(page: Page, count: number) {
+  await page.evaluate(
+    (photoCount) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open("michi");
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const database = open.result;
+          const transaction = database.transaction("walk-drafts", "readwrite");
+          const store = transaction.objectStore("walk-drafts");
+          const request = store.getAll();
+
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error);
+          };
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const [draft] = request.result as Array<{
+              photos: Array<{
+                capturedAt: string | null;
+                lat: number | null;
+                lng: number | null;
+              }>;
+            }>;
+            if (!draft || draft.photos.length !== photoCount) {
+              transaction.abort();
+              reject(new Error(`Expected ${photoCount} persisted photos.`));
+              return;
+            }
+            draft.photos = draft.photos.map((photo, index) => ({
+              ...photo,
+              capturedAt: new Date(
+                Date.UTC(2026, 0, 1) + index * 60_000,
+              ).toISOString(),
+              lat: 35 + index * 0.00001,
+              lng: 135 + index * 0.00001,
+            }));
+            store.put(draft);
+          };
+        };
+      }),
+    count,
   );
 }
 
@@ -276,7 +327,7 @@ test("restores and plays a manually placed note stop", async ({
     .filter({ hasText: "Note-only stop" })
     .getByRole("button", { name: /Select for placement: note/ })
     .click();
-  await placeAtCenter.click();
+  await map.locator(".maplibregl-canvas").click({ position: { x: 80, y: 80 } });
   await expect(page.getByText(/2 placed · 1 unplaced/)).toBeVisible();
 
   await page.getByRole("button", { name: "Save walk" }).click();
@@ -291,13 +342,55 @@ test("restores and plays a manually placed note stop", async ({
   await expect(stops.nth(1).getByRole("img", { name: "No-EXIF photo 2" })).toBeVisible();
   await expect(stops.nth(2)).toContainText(note);
 
-  await page.getByRole("button", { name: "Step through stops" }).click();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "Play this walk" }).click();
   const playback = page.getByRole("dialog", {
     name: `Walk playback: ${title}`,
   });
-  await expect(playback.getByText("Stop 1 of 2 · Photo")).toBeVisible();
+  await playback.getByRole("button", { name: "Begin walk" }).click();
+  const timelineItems = playback
+    .getByRole("list", { name: "Stop timeline" })
+    .getByRole("listitem");
+  await expect(timelineItems).toHaveText([
+    "1. Photo",
+    "2. Photo",
+    "3. Note",
+  ]);
+  const speed = playback.getByRole("group", { name: "Playback speed" });
+  await speed.getByRole("button", { name: "4×", exact: true }).click();
+  await expect(
+    speed.getByRole("button", { name: "4×", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await speed.getByRole("button", { name: "16×", exact: true }).click();
+  await expect(
+    speed.getByRole("button", { name: "16×", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const position = playback.getByRole("slider", {
+    name: "Playback position",
+  });
+  await position.fill("1000");
+  await expect(playback.getByText(note, { exact: true })).toBeVisible();
+  await expect(
+    playback.locator("[data-playback-progress='1000']"),
+  ).toHaveCount(1);
+  await position.fill("0");
+  await expect(
+    playback.getByRole("img", { name: "No-EXIF photo 1" }),
+  ).toBeVisible();
+  await playback.getByRole("button", { name: /Exit/ }).click();
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "Step through stops" }).click();
+  await expect(playback.getByText("Stop 1 of 3 · Photo")).toBeVisible();
   await playback.getByRole("button", { name: /Next/ }).click();
-  await expect(playback.getByText("Stop 2 of 2 · Note")).toBeVisible();
+  await expect(playback.getByText("Stop 2 of 3 · Photo")).toBeVisible();
+  await expect(
+    playback.getByRole("img", { name: "No-EXIF photo 2" }),
+  ).toBeVisible();
+  await playback.getByRole("button", { name: /Next/ }).click();
+  await expect(playback.getByText("Stop 3 of 3 · Note")).toBeVisible();
   await expect(playback.getByText(note, { exact: true })).toBeVisible();
   await playback.getByRole("button", { name: /Exit/ }).click();
 
@@ -307,6 +400,191 @@ test("restores and plays a manually placed note stop", async ({
     page.getByRole("region", { name: "Stops along this walk" }).getByRole("listitem"),
   ).toHaveCount(3);
   await expect(page.getByText(note, { exact: true })).toBeVisible();
+});
+
+test("replays every photo in the release journey", async ({ page }) => {
+  test.setTimeout(300_000);
+  const title = `${replayStopCount}-photo chronological replay`;
+  const expectedAlts = Array.from(
+    { length: replayStopCount },
+    (_, index) => `Release photo ${index + 1}`,
+  );
+
+  await page.goto("/dashboard/new");
+  const files = await importUnplacedPhotos(page, replayStopCount);
+  await fillPhotoDescriptions(page, files, "Release photo");
+  await page.getByLabel("Title").fill(title);
+  await expect.poll(() => storedDraftSummary(page)).toEqual({
+    title,
+    descriptions: expectedAlts,
+    notes: [],
+    placedPhotos: 0,
+    uploads: Array(replayStopCount).fill("pending"),
+  });
+  await page.goto("/dashboard");
+  await placeStoredDraftPhotos(page, replayStopCount);
+
+  await page.goto("/dashboard/new");
+  await expect(page.getByText("Draft restored from this browser.")).toBeVisible();
+  await expect(
+    page.getByText(`${replayStopCount} placed · 0 unplaced`, { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/, {
+    timeout: 180_000,
+  });
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.getByRole("button", { name: "Play this walk" }).click();
+  const playback = page.getByRole("dialog", {
+    name: `Walk playback: ${title}`,
+  });
+  await playback.evaluate((dialog) => {
+    const view = window as unknown as {
+      replayPopupStops: Array<{ alt: string; progress: number }>;
+      replayStopEvents: Array<{
+        id: string;
+        progress: number;
+        lng: number;
+        lat: number;
+      }>;
+      replayPopupObserver: MutationObserver;
+    };
+    const seen: Array<{ alt: string; progress: number }> = [];
+    const stopEvents: Array<{
+      id: string;
+      progress: number;
+      lng: number;
+      lat: number;
+    }> = [];
+    const recordPopup = () => {
+      const image = dialog.querySelector<HTMLImageElement>(
+        '[aria-live="polite"] img',
+      );
+      const alt = image?.alt;
+      if (alt && seen[seen.length - 1]?.alt !== alt) {
+        seen.push({
+          alt,
+          progress: Number(
+            dialog
+              .querySelector("[data-playback-progress]")
+              ?.getAttribute("data-playback-progress"),
+          ),
+        });
+      }
+    };
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        if (
+          record.type === "attributes" &&
+          record.attributeName === "data-playback-stop-event"
+        ) {
+          const marker = record.target as HTMLElement;
+          stopEvents.push({
+            id: marker.dataset.playbackStop ?? "",
+            progress: Number(marker.dataset.playbackProgress),
+            lng: Number(marker.dataset.playbackLng),
+            lat: Number(marker.dataset.playbackLat),
+          });
+        }
+      }
+      recordPopup();
+    });
+    observer.observe(dialog, {
+      attributes: true,
+      attributeFilter: ["alt", "data-playback-stop-event"],
+      childList: true,
+      subtree: true,
+    });
+    view.replayPopupStops = seen;
+    view.replayStopEvents = stopEvents;
+    view.replayPopupObserver = observer;
+  });
+
+  await playback.getByRole("button", { name: "Begin walk" }).click();
+  await expect(
+    playback.getByRole("img", { name: expectedAlts[0] }),
+  ).toBeVisible();
+  const pausePlayback = playback.getByRole("button", {
+    name: "Pause playback",
+  });
+  await expect(pausePlayback).toBeFocused();
+  await pausePlayback.click();
+  const resumePlayback = playback.getByRole("button", {
+    name: "Resume playback",
+  });
+  await expect(resumePlayback).toBeFocused();
+  await resumePlayback.click();
+  const timelineItems = playback
+    .getByRole("list", { name: "Stop timeline" })
+    .getByRole("listitem");
+  await expect(timelineItems).toHaveCount(replayStopCount);
+  await expect(timelineItems).toHaveText(
+    expectedAlts.map((_, index) => `${index + 1}. Photo`),
+  );
+  const expectedStopIds = await timelineItems
+    .getByRole("button")
+    .evaluateAll((buttons) => buttons.map((button) => button.dataset.stopId));
+  await playback
+    .getByRole("group", { name: "Playback speed" })
+    .getByRole("button", { name: "16×", exact: true })
+    .click();
+  await expect(playback.getByText(`${title} · walked`)).toBeVisible({
+    timeout: Math.max(60_000, replayStopCount * 1_000),
+  });
+  await expect(playback.getByRole("button", { name: "Replay" })).toBeFocused();
+
+  const replayEvents = await page.evaluate(() => {
+    const view = window as unknown as {
+      replayPopupStops: Array<{ alt: string; progress: number }>;
+      replayStopEvents: Array<{
+        id: string;
+        progress: number;
+        lng: number;
+        lat: number;
+      }>;
+      replayPopupObserver: MutationObserver;
+    };
+    view.replayPopupObserver.disconnect();
+    return {
+      popupStops: view.replayPopupStops,
+      stopEvents: view.replayStopEvents,
+    };
+  });
+  const { popupStops: seenStops, stopEvents } = replayEvents;
+  expect(seenStops.map(({ alt }) => alt)).toEqual(expectedAlts);
+  expect(stopEvents.map(({ id }) => id)).toEqual(expectedStopIds);
+  expect(
+    seenStops.every(
+      ({ progress }, index) =>
+        Number.isFinite(progress) &&
+        (index === 0 || progress >= seenStops[index - 1].progress),
+    ),
+  ).toBe(true);
+  expect(new Set(seenStops.map(({ progress }) => progress)).size).toBeGreaterThan(
+    1,
+  );
+  expect(
+    stopEvents.every(
+      ({ progress, lng, lat }, index) =>
+        Number.isFinite(progress) &&
+        Number.isFinite(lng) &&
+        Number.isFinite(lat) &&
+        (index === 0 || progress >= stopEvents[index - 1].progress),
+    ),
+  ).toBe(true);
+  expect(
+    new Set(stopEvents.map(({ lng, lat }) => `${lng},${lat}`)).size,
+  ).toBeGreaterThan(1);
+  await expect(
+    playback.locator("[data-playback-progress='1000']"),
+  ).toHaveCount(1);
+  const renderCounter = playback.locator("[data-playback-render-count]");
+  await expect(renderCounter).toHaveCount(1);
+  expect(
+    Number(await renderCounter.getAttribute("data-playback-render-count")),
+  ).toBeLessThanOrEqual(replayStopCount * 2 + 20);
 });
 
 test("keeps a 100-photo draft editable while reporting progress", async ({
@@ -819,6 +1097,7 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
 test("opens and replays the seeded photo walk without social controls", async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/dashboard");
 
   await page.getByRole("link", { name: new RegExp(walkTitle) }).click();
@@ -841,14 +1120,24 @@ test("opens and replays the seeded photo walk without social controls", async ({
     page.getByRole("button", { name: "Step through stops" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Step through stops" }).click();
+  await page.getByRole("button", { name: "Play this walk" }).click();
   const dialog = page.getByRole("dialog", {
     name: `Walk playback: ${walkTitle}`,
   });
   await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole("application", { name: `Route map: ${walkTitle}` }),
+  ).toBeVisible();
   await expect(dialog.getByText("Stop 1 of 2", { exact: false })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Next/ })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Exit/ })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Begin walk" })).toHaveCount(0);
+  await expect(
+    dialog.getByRole("group", { name: "Playback speed" }),
+  ).toHaveCount(0);
+  await expect(
+    dialog.getByRole("slider", { name: "Playback position" }),
+  ).toHaveCount(0);
 });
 
 test("keeps the public walk page photo-first and social-free", async ({ page }) => {
