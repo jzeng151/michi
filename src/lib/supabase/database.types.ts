@@ -80,6 +80,70 @@ export type Database = {
           },
         ]
       }
+      curated_waypoints: {
+        Row: {
+          created_at: string
+          id: string
+          lat: number
+          lng: number
+          location: unknown
+          media_id: string | null
+          route_id: string
+          sort_index: number
+          story: string
+          time_period: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lat: number
+          lng: number
+          location?: unknown
+          media_id?: string | null
+          route_id: string
+          sort_index: number
+          story: string
+          time_period: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          location?: unknown
+          media_id?: string | null
+          route_id?: string
+          sort_index?: number
+          story?: string
+          time_period?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curated_waypoints_media_id_fkey"
+            columns: ["media_id"]
+            isOneToOne: false
+            referencedRelation: "walk_media"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_waypoints_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "trending_walks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curated_waypoints_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "walks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follows: {
         Row: {
           created_at: string
@@ -356,6 +420,27 @@ export type Database = {
     Functions: {
       can_view_walk: { Args: { w_id: string }; Returns: boolean }
       is_lnglat_array: { Args: { coords: Json }; Returns: boolean }
+      match_curated_waypoints: {
+        Args: { p_walk_id: string }
+        Returns: {
+          distance_m: number
+          lat: number
+          lng: number
+          matched_stop_id: string
+          media_alt: string
+          media_bucket: string
+          media_id: string
+          media_mime_type: string
+          media_path: string
+          route_id: string
+          route_title: string
+          sort_index: number
+          story: string
+          time_period: string
+          title: string
+          waypoint_id: string
+        }[]
+      }
       owns_editable_walk: { Args: { w_id: string }; Returns: boolean }
       save_walk_draft: {
         Args: {

@@ -8,6 +8,10 @@ import {
 const walkId = "10000000-0000-4000-8000-000000000002";
 const walkPath = `/dashboard/walks/${walkId}`;
 const walkTitle = "Nakasendo: Magome to Tsumago";
+const layeredWalkId = "12000000-0000-4000-8000-000000000001";
+const layeredWalkTitle = "An afternoon in Tsumago";
+const plainWalkId = "12000000-0000-4000-8000-000000000002";
+const plainWalkTitle = "A plain walk in Sapporo";
 const replayStopCount = Number(process.env.REPLAY_STOP_COUNT ?? 20);
 
 type StoredDraftSummary = {
@@ -1138,6 +1142,49 @@ test("opens and replays the seeded photo walk without social controls", async ({
   await expect(
     dialog.getByRole("slider", { name: "Playback position" }),
   ).toHaveCount(0);
+});
+
+test("layers matched path stories and keeps a far-away replay plain", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`/dashboard/walks/${layeredWalkId}`);
+  await page.getByRole("button", { name: "Play this walk" }).click();
+
+  const layered = page.getByRole("dialog", {
+    name: `Walk playback: ${layeredWalkTitle}`,
+  });
+  const toggle = layered.getByLabel("Show the path's stories");
+  await expect(toggle).toBeChecked();
+  const timeline = layered
+    .getByRole("list", { name: "Replay timeline" })
+    .getByRole("listitem");
+  await expect(timeline).toHaveText([
+    "1. Your stop · Note",
+    "2. The path's story · Tsumago-juku",
+    "3. Your stop · Note",
+    "4. The path's story · Tsumago-juku",
+  ]);
+  await expect(layered.locator("[data-curated-waypoint]")).toHaveCount(1);
+  await expectNoHighImpactViolations(page);
+
+  await toggle.uncheck();
+  await expect(timeline).toHaveText(["1. Note", "2. Note"]);
+  await expect(layered.locator("[data-curated-waypoint]")).toHaveCount(0);
+  await expect(layered.getByText("The path's story", { exact: true })).toHaveCount(0);
+  await layered.getByRole("button", { name: /Exit/ }).click();
+
+  await page.goto(`/dashboard/walks/${plainWalkId}`);
+  await page.getByRole("button", { name: "Play this walk" }).click();
+  const plain = page.getByRole("dialog", {
+    name: `Walk playback: ${plainWalkTitle}`,
+  });
+  await expect(plain.getByLabel("Show the path's stories")).toHaveCount(0);
+  await expect(
+    plain.getByRole("list", { name: "Replay timeline" }).getByRole("listitem"),
+  ).toHaveText(["1. Note", "2. Note"]);
+  await expect(plain.getByText(/Your stop|The path's story/)).toHaveCount(0);
 });
 
 test("keeps the public walk page photo-first and social-free", async ({ page }) => {

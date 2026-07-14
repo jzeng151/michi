@@ -34,7 +34,7 @@ jobs:
             --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
             | grep '^NEXT_PUBLIC_' \
             | sed 's/="\(.*\)"$/=\1/' >> "$GITHUB_ENV"
-      - run: pnpm supabase db lint --local --level warning --fail-on warning
+      - run: pnpm supabase db lint --local --schema public --level warning --fail-on warning
       - run: pnpm test:db
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium

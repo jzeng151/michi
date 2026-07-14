@@ -72,6 +72,29 @@ it("orders stops chronologically and derives a route from placed stops", async (
         eq: () => ({ maybeSingle: async () => ({ data: row }) }),
       }),
     }),
+    rpc: async () => ({
+      data: [
+        {
+          matched_stop_id: "stop-3",
+          waypoint_id: "waypoint-1",
+          route_id: "route-1",
+          route_title: "Nakasendo",
+          time_period: "Edo period",
+          title: "Post town",
+          story: "A story beside the personal stop.",
+          lat: coordinates[0][1],
+          lng: coordinates[0][0],
+          sort_index: 0,
+          distance_m: 12,
+          media_id: "story-media",
+          media_bucket: "curated",
+          media_path: "story.webp",
+          media_alt: "Historic post town",
+          media_mime_type: "image/webp",
+        },
+      ],
+      error: null,
+    }),
   } as unknown as Parameters<typeof fetchWalkDetail>[0];
 
   const detail = await fetchWalkDetail(client, row.id);
@@ -120,6 +143,12 @@ it("orders stops chronologically and derives a route from placed stops", async (
   expect(detail?.pins[1]).toMatchObject({
     mimeType: "image/heic",
     url: null,
+  });
+  expect(detail?.curatedMatches[0]).toMatchObject({
+    matchedStopId: "stop-3",
+    waypointId: "waypoint-1",
+    title: "Post town",
+    url: expect.stringContaining("/curated/story.webp"),
   });
   expect(lists.mine[0].cover?.alt).toBe("placed-2");
   expect(lists.mine[0].start).toEqual(coordinates[1]);

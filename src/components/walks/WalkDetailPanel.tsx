@@ -20,7 +20,7 @@ export function WalkDetailPanel({
   data: WalkDetailData;
   viewerId: string;
 }) {
-  const { walk, ownerName, ownerUsername, media, pins } = data;
+  const { walk, ownerName, ownerUsername, media, pins, curatedMatches } = data;
   const isOwner = walk.owner_id === viewerId;
   const isPublic = walk.visibility === "public";
   const [playback, setPlayback] = useState<PlaybackMode | null>(null);
@@ -95,6 +95,7 @@ export function WalkDetailPanel({
           title={walk.title}
           path={walk.path}
           media={media}
+          curatedMatches={curatedMatches}
           initialMode={playback}
           onExit={() => setPlayback(null)}
         />
