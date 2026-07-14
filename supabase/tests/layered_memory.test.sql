@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(14);
+select plan(16);
 
 insert into public.walks (
   id, owner_id, title, path, distance_m, visibility, is_curated
@@ -42,6 +42,15 @@ insert into public.walks (
     0,
     'private',
     false
+  ),
+  (
+    '24000000-0000-4000-8000-000000000005',
+    '00000000-0000-4000-8000-000000000001',
+    'Staged curated route',
+    '{"type":"LineString","coordinates":[[20,20],[20.001,20.001]]}',
+    150,
+    'private',
+    true
   );
 
 insert into public.curated_waypoints (
@@ -54,6 +63,19 @@ insert into public.curated_waypoints (
   'Test period',
   'Boundary story',
   'A waypoint used to prove the inclusive radius.',
+  0
+);
+
+insert into public.curated_waypoints (
+  id, route_id, lat, lng, time_period, title, story, sort_index
+) values (
+  '54000000-0000-4000-8000-000000000002',
+  '24000000-0000-4000-8000-000000000005',
+  20,
+  20,
+  'Test period',
+  'Staged story',
+  'A waypoint that must stay hidden until its route is public.',
   0
 );
 
@@ -232,6 +254,20 @@ select is(
   'another user cannot match a private walk'
 );
 
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select is(
+  (
+    select count(*) from public.curated_waypoints
+    where id = '54000000-0000-4000-8000-000000000002'
+  ),
+  0::bigint,
+  'authenticated clients cannot read waypoints from private curated routes'
+);
+
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
@@ -242,6 +278,14 @@ select is(
   ),
   1::bigint,
   'public curated waypoint reads work'
+);
+select is(
+  (
+    select count(*) from public.curated_waypoints
+    where id = '54000000-0000-4000-8000-000000000002'
+  ),
+  0::bigint,
+  'anonymous clients cannot read waypoints from private curated routes'
 );
 select is(
   (

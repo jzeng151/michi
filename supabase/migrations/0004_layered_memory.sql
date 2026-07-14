@@ -25,7 +25,15 @@ create index curated_waypoints_location_idx
 alter table public.curated_waypoints enable row level security;
 
 create policy "curated_waypoints_select" on public.curated_waypoints
-  for select using (true);
+  for select using (
+    exists (
+      select 1
+      from public.walks route
+      where route.id = curated_waypoints.route_id
+        and route.visibility = 'public'
+        and route.is_curated
+    )
+  );
 
 grant select on public.curated_waypoints to anon, authenticated;
 
