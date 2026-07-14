@@ -25,3 +25,24 @@ it("shows a clear fallback instead of rendering a HEIC image", () => {
   );
   expect(html).not.toContain("<img");
 });
+
+it("renders a note-only stop in the ordered list", () => {
+  const html = renderToStaticMarkup(
+    <MediaStopList
+      media={[
+        {
+          id: "note-stop",
+          kind: "note",
+          note: "Tea beside the old cedar.",
+          lat: null,
+          lng: null,
+        },
+      ]}
+    />,
+  );
+
+  expect(html).toContain("Stop 1 of 1 · Note");
+  expect(html).toContain("Tea beside the old cedar.");
+  expect(html).not.toContain("<img");
+  expect(html).not.toContain("<audio");
+});

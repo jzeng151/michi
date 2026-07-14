@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { LineString, MediaPin } from "@/lib/types";
+import type { LineString, MediaPin, WalkPin } from "@/lib/types";
 
 export type OverviewPoint = {
   id: string;
@@ -8,7 +8,7 @@ export type OverviewPoint = {
 };
 
 export type MapDisplay =
-  | { kind: "walk"; walkId: string; path: LineString | null; media: MediaPin[] }
+  | { kind: "walk"; walkId: string; path: LineString | null; media: WalkPin[] }
   | { kind: "overview"; points: OverviewPoint[] }
   | {
       kind: "draft";
@@ -49,7 +49,7 @@ export function useMapDisplay(): MapDisplay {
 // provides "add point at map center" for keyboard users.
 
 let mapClickHandler: ((lngLat: [number, number]) => void) | null = null;
-let centerPointProvider: (() => void) | null = null;
+let centerPointProvider: (() => boolean) | null = null;
 
 export function setMapClickHandler(
   handler: ((lngLat: [number, number]) => void) | null,
@@ -66,10 +66,10 @@ export function hasMapClickHandler(): boolean {
 }
 
 /** Registered by the map: emits a click at the current map center. */
-export function setCenterPointProvider(provider: (() => void) | null) {
+export function setCenterPointProvider(provider: (() => boolean) | null) {
   centerPointProvider = provider;
 }
 
 export function requestCenterPoint() {
-  centerPointProvider?.();
+  return centerPointProvider?.() ?? false;
 }

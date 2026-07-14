@@ -8,6 +8,8 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     [135, 35],
     [135.001, 35.001],
   ];
+  const noteCoordinate: [number, number] = [134.999, 34.999];
+  const route = [noteCoordinate, ...coordinates];
   const media = (id: string, mimeType = "image/webp") => ({
     id,
     bucket: "curated",
@@ -38,10 +40,19 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
         note: "Needs placement",
         walk_media: media("unplaced", "image/heic"),
       },
+      {
+        id: "note-1",
+        kind: "note",
+        sort_index: 1,
+        lat: noteCoordinate[1],
+        lng: noteCoordinate[0],
+        note: "Tea beside the old cedar.",
+        walk_media: null,
+      },
       ...coordinates.map(([lng, lat], index) => ({
         id: `stop-${index + 2}`,
         kind: "photo",
-        sort_index: index + 1,
+        sort_index: index + 2,
         lat,
         lng,
         note: null,
@@ -72,24 +83,44 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
 
   expect(detail?.media.map(({ id }) => id)).toEqual([
     "unplaced",
+    "note-1",
     "placed-1",
     "placed-2",
   ]);
-  expect(detail?.pins.map(({ id }) => id)).toEqual(["placed-1", "placed-2"]);
-  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([1, 2]);
+  expect(detail?.pins.map(({ id }) => id)).toEqual([
+    "note-1",
+    "placed-1",
+    "placed-2",
+  ]);
+  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([1, 2, 3]);
+  expect(detail?.pins[0]).toEqual({
+    id: "note-1",
+    kind: "note",
+    note: "Tea beside the old cedar.",
+    lat: noteCoordinate[1],
+    lng: noteCoordinate[0],
+    listIndex: 1,
+  });
+  expect(detail?.media[1]).toEqual({
+    id: "note-1",
+    kind: "note",
+    note: "Tea beside the old cedar.",
+    lat: noteCoordinate[1],
+    lng: noteCoordinate[0],
+  });
   expect(detail?.media[0]).toMatchObject({
     mimeType: "image/heic",
     url: null,
   });
-  expect(detail?.pins[0]).toMatchObject({
+  expect(detail?.pins[1]).toMatchObject({
     mimeType: "image/heic",
     url: null,
   });
   expect(lists.mine[0].cover?.alt).toBe("placed-2");
-  expect(detail?.walk.path?.coordinates).toEqual(coordinates);
-  expect(detail?.walk.distance_m).toBe(pathDistance(coordinates));
-  expect(lists.curated[0].distanceM).toBe(pathDistance(coordinates));
-  expect(lists.mine[0].distanceM).toBe(pathDistance(coordinates));
+  expect(detail?.walk.path?.coordinates).toEqual(route);
+  expect(detail?.walk.distance_m).toBe(pathDistance(route));
+  expect(lists.curated[0].distanceM).toBe(pathDistance(route));
+  expect(lists.mine[0].distanceM).toBe(pathDistance(route));
   expect(isHeicMime("image/heic")).toBe(true);
   expect(isHeicMime("image/heif; charset=binary")).toBe(true);
   expect(isHeicMime("image/webp")).toBe(false);

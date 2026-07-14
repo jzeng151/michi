@@ -5,7 +5,7 @@ import { type MapRef } from "react-map-gl/maplibre";
 import { MapCanvas } from "./MapCanvas";
 import { RouteLayer } from "./RouteLayer";
 import { MediaMarker } from "./MediaMarker";
-import type { LineString, MediaPin } from "@/lib/types";
+import type { LineString, WalkPin } from "@/lib/types";
 
 /** Self-contained walk map for pages outside the dashboard frame. */
 export function WalkMap({
@@ -15,7 +15,7 @@ export function WalkMap({
 }: {
   title: string;
   path: LineString | null;
-  media: MediaPin[];
+  media: WalkPin[];
 }) {
   const mapRef = useRef<MapRef>(null);
   const coordinates =

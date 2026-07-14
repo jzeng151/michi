@@ -87,7 +87,9 @@ export function DashboardMap() {
   useEffect(() => {
     setCenterPointProvider(() => {
       const center = mapRef.current?.getCenter();
-      if (center) emitMapClick([center.lng, center.lat]);
+      if (!center) return false;
+      emitMapClick([center.lng, center.lat]);
+      return true;
     });
     return () => setCenterPointProvider(null);
   }, []);

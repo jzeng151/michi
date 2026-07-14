@@ -118,7 +118,7 @@ export function MediaCapture({
           disabled={disabled}
           onClick={() => fileInputRef.current?.click()}
         >
-          📷 Choose photos
+          Choose photos
         </button>
         <input
           ref={fileInputRef}

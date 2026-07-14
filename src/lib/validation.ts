@@ -31,6 +31,12 @@ export const photoAltSchema = z
   .min(1, "Describe this photo for people who can't see it")
   .max(300);
 
+export const stopNoteSchema = z
+  .string()
+  .trim()
+  .min(1, "Write the note before saving")
+  .max(2000, "Keep the note under 2000 characters");
+
 /**
  * Only allow same-origin relative redirect targets (no open redirects).
  * Resolves against a dummy origin instead of prefix-matching, because
