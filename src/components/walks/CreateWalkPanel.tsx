@@ -75,13 +75,18 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   const [removingPhotoId, setRemovingPhotoId] = useState<string | null>(null);
   const [confirmedWalkId, setConfirmedWalkId] = useState<string | null>(null);
   const [existingWalkId, setExistingWalkId] = useState<string | null>(null);
+  const [existingDraftUnlocked, setExistingDraftUnlocked] = useState(false);
   const [confirmationPending, setConfirmationPending] = useState(false);
+  const [restoredPhotoIds, setRestoredPhotoIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const previewUrls = useRef(new Set<string>());
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistQueue = useRef<Promise<void>>(Promise.resolve());
   const draftRef = useRef<WalkDraft | null>(null);
   const skipFlush = useRef(false);
   const browserRecoveryEnabled = useRef(true);
+  const needsDraftCleanup = useRef(false);
 
   const updateDraft = useCallback((change: (current: WalkDraft) => WalkDraft) => {
     setDraft((current) => (current ? change(current) : current));
@@ -135,6 +140,9 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       try {
         const restored = await repository.restore(userId);
         if (!active) return;
+        setRestoredPhotoIds(
+          new Set(restored?.photos.map(({ id }) => id) ?? []),
+        );
         let notice = restored ? "Draft restored from this browser." : null;
         if (restored) {
           const confirmation = await createClient()
@@ -147,6 +155,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
             notice = `Draft restored, but its saved status couldn't be confirmed: ${confirmation.error.message}. You can keep editing; we'll check again when you save.`;
           } else if (confirmation.data) {
             setExistingWalkId(restored.id);
+            setExistingDraftUnlocked(false);
             notice =
               "This browser draft belongs to a saved walk. Open the saved walk, or continue editing and save to update it.";
           }
@@ -402,7 +411,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   async function removePhoto(photo: DraftPhoto) {
     if (!draft || saving || removingPhotoId || confirmedWalkId) return;
-    if (existingWalkId || confirmationPending) {
+    if (isPhotoRemovalBlocked(photo)) {
       setSaveMessage(
         "Photo removal is disabled while this draft may already belong to a saved walk.",
       );
@@ -519,20 +528,24 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   function disableBrowserRecovery(error: unknown) {
     browserRecoveryEnabled.current = false;
+    needsDraftCleanup.current = true;
     const message = error instanceof Error ? error.message : "Unknown error";
     setStorageError(`Couldn't save the browser draft: ${message}`);
     setDraftNotice(
-      "Browser recovery stopped working. Keep this tab open until the walk is saved; any earlier browser draft was left untouched.",
+      "Browser recovery stopped working. Keep this tab open until the walk is saved; we'll clean up any older browser copy after the save is confirmed.",
     );
   }
 
   function startWithoutBrowserRecovery() {
     browserRecoveryEnabled.current = false;
+    needsDraftCleanup.current = false;
+    setRestoredPhotoIds(new Set());
     setConfirmationPending(false);
     previewUrls.current.forEach(URL.revokeObjectURL);
     previewUrls.current.clear();
     setPreviews({});
     setExistingWalkId(null);
+    setExistingDraftUnlocked(false);
     setRestoreFailure(null);
     setStorageError(null);
     setSaveMessage(null);
@@ -553,7 +566,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
   async function finishSavedWalk(walkId: string) {
     skipFlush.current = true;
     setConfirmedWalkId(walkId);
-    if (!browserRecoveryEnabled.current) {
+    if (!browserRecoveryEnabled.current && !needsDraftCleanup.current) {
       previewUrls.current.forEach(URL.revokeObjectURL);
       previewUrls.current.clear();
       router.push(`/dashboard/walks/${walkId}`);
@@ -561,6 +574,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     }
     try {
       await repository.clear(userId);
+      needsDraftCleanup.current = false;
     } catch (error) {
       setStorageError(
         `Walk saved, but the browser draft couldn't be cleared: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -628,12 +642,14 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
       setConfirmationPending(false);
       if (confirmation.data) {
         setExistingWalkId(snapshot.id);
+        setExistingDraftUnlocked(false);
         setDraftNotice(
-          "This draft already has a saved walk. Your local edits are still here; press Save again to update it, or open the saved walk.",
+          "This draft already has a saved walk. Your local edits are still here, but you must choose whether to edit this browser copy.",
         );
         setSaving(false);
         return;
       }
+      setRestoredPhotoIds(new Set());
     }
 
     let working = snapshot;
@@ -876,6 +892,56 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
     );
   }
 
+  if (existingWalkId && !existingDraftUnlocked) {
+    return (
+      <div className="flex flex-col gap-4 p-4">
+        <h1 className="font-display text-2xl font-semibold">
+          Saved walk already exists
+        </h1>
+        <p className="text-sm">
+          This browser draft belongs to a saved walk and may be older than the
+          saved version. It won&apos;t update that walk unless you choose to
+          continue editing this browser copy.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/dashboard/walks/${existingWalkId}`}
+            className={primaryButton}
+          >
+            Open saved walk
+          </Link>
+          <button
+            type="button"
+            className={button}
+            onClick={() => {
+              setExistingDraftUnlocked(true);
+              setDraftNotice(
+                "Editing the browser copy. Saving will replace the saved walk with this version.",
+              );
+            }}
+          >
+            Continue editing browser draft
+          </button>
+          <button
+            type="button"
+            className={button}
+            onClick={startWithoutBrowserRecovery}
+          >
+            Start a new walk without browser recovery
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function isPhotoRemovalBlocked(photo: DraftPhoto) {
+    return (
+      (Boolean(existingWalkId) || confirmationPending) &&
+      (photo.upload.attempted ||
+        (photo.status === "ready" && restoredPhotoIds.has(photo.id)))
+    );
+  }
+
   function placementControls(stopId: string, located: boolean, name: string) {
     const selected = selectedStopId === stopId;
     return (
@@ -1075,7 +1141,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
           />
         )}
         {placementControls(stop.stopId, located, stop.originalName)}
-        {photoRemovalBlocked ? (
+        {isPhotoRemovalBlocked(stop) ? (
           <p className="text-xs text-ink-muted">
             Photo removal is disabled while this draft may belong to a saved walk.
           </p>
@@ -1096,8 +1162,6 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
 
   const showImportQueue =
     importing || draft.photos.some(({ status }) => status === "error");
-  const photoRemovalBlocked =
-    Boolean(existingWalkId) || confirmationPending;
 
   return (
     <div className="flex flex-col gap-6 p-4">
@@ -1204,17 +1268,23 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
                     {photo.error}
                   </p>
                 )}
-                {photo.status === "error" && (
-                  <button
-                    type="button"
-                    aria-label={`Remove ${photo.originalName}`}
-                    className="min-h-11 text-ink-muted underline underline-offset-4 hover:text-ink"
-                    disabled={Boolean(removingPhotoId)}
-                    onClick={() => void removePhoto(photo)}
-                  >
-                    {removingPhotoId === photo.id ? "Removing…" : "Remove"}
-                  </button>
-                )}
+                {photo.status === "error" &&
+                  (isPhotoRemovalBlocked(photo) ? (
+                    <p className="basis-full text-xs text-ink-muted">
+                      Photo removal is disabled while this draft may belong to a
+                      saved walk.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Remove ${photo.originalName}`}
+                      className="min-h-11 text-ink-muted underline underline-offset-4 hover:text-ink"
+                      disabled={Boolean(removingPhotoId)}
+                      onClick={() => void removePhoto(photo)}
+                    >
+                      {removingPhotoId === photo.id ? "Removing…" : "Remove"}
+                    </button>
+                  ))}
               </li>
             ))}
           </ul>

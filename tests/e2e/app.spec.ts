@@ -481,7 +481,7 @@ test("continues saving when browser draft writes stop working", async ({
   await page.getByRole("button", { name: "Save walk" }).click();
   await expect(
     page.getByText(
-      "Browser recovery stopped working. Keep this tab open until the walk is saved; any earlier browser draft was left untouched.",
+      "Browser recovery stopped working. Keep this tab open until the walk is saved; we'll clean up any older browser copy after the save is confirmed.",
     ),
   ).toBeVisible();
   await expect(page.getByText(/Quota exceeded/)).toBeVisible();
@@ -491,10 +491,7 @@ test("continues saving when browser draft writes stop working", async ({
   await expect(
     page.getByRole("heading", { name: "Saved despite quota" }),
   ).toBeVisible();
-  await expect.poll(() => storedDraftSummary(page)).toMatchObject({
-    title: "Earlier browser copy",
-    notes: ["Still in this tab."],
-  });
+  await expect.poll(() => storedDraftSummary(page)).toBeNull();
 });
 
 test("restores a local draft while saved-status confirmation is unavailable", async ({
@@ -539,6 +536,17 @@ test("restores a local draft while saved-status confirmation is unavailable", as
   await expect(photoCard(page, photo.name)).toContainText(
     "Photo removal is disabled while this draft may belong to a saved walk.",
   );
+
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles([importPhotoFixtures[2]]);
+  const failedImport = photoCard(page, importPhotoFixtures[2].name);
+  await expect(failedImport).toContainText("Failed");
+  await failedImport
+    .getByRole("button", { name: `Remove ${importPhotoFixtures[2].name}` })
+    .click();
+  await expect(failedImport).toHaveCount(0);
+
   await page.getByLabel("Title").fill("Edited while unconfirmed");
   await page.getByRole("button", { name: "Save walk" }).click();
   await expect(
@@ -592,8 +600,15 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
   await page.goto("/dashboard/new");
   await expect(page).toHaveURL(/\/dashboard\/new$/);
   await expect(
+    page.getByRole("heading", { name: "Saved walk already exists" }),
+  ).toBeVisible();
+  await expect(
     page.getByText(/This browser draft belongs to a saved walk/),
   ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Continue editing browser draft" })
+    .click();
   await expect(page.getByLabel("Title")).toHaveValue("Cleanup blocked walk");
 
   await page.getByLabel("Title").fill("Cleanup blocked walk updated");
@@ -605,6 +620,9 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
   ).toBeVisible();
 
   await page.goto("/dashboard/new");
+  await expect(
+    page.getByRole("heading", { name: "Saved walk already exists" }),
+  ).toBeVisible();
   await page
     .getByRole("button", { name: "Start a new walk without browser recovery" })
     .click();
