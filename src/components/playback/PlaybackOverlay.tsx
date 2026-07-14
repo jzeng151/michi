@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Marker, type MapRef } from "react-map-gl/maplibre";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { usePlaybackTimeline } from "./usePlaybackTimeline";
 import { StepThrough } from "./StepThrough";
 import { isHeicMime } from "@/lib/media-url";
-import type { LineString, MediaPin } from "@/lib/types";
+import type { LineString, MediaPin, WalkPin } from "@/lib/types";
 
 export type PlaybackMode = "cinematic" | "steps";
 
@@ -23,7 +23,7 @@ export function PlaybackOverlay({
 }: {
   title: string;
   path: LineString;
-  media: MediaPin[];
+  media: WalkPin[];
   initialMode: PlaybackMode;
   onExit: () => void;
 }) {
@@ -37,10 +37,14 @@ export function PlaybackOverlay({
   const dialogRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
   const progressRef = useRef<HTMLInputElement>(null);
+  const mediaStops = useMemo(
+    () => media.filter((pin): pin is MediaPin => pin.kind !== "note"),
+    [media],
+  );
 
   const playback = usePlaybackTimeline({
     path,
-    media,
+    media: mediaStops,
     getMap: () => mapRef.current,
     progressElRef: progressRef,
   });

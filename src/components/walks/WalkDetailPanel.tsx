@@ -92,7 +92,7 @@ export function WalkDetailPanel({
         <PlaybackOverlay
           title={walk.title}
           path={walk.path}
-          media={pins.filter((pin) => pin.kind !== "note")}
+          media={pins}
           initialMode={playback}
           onExit={() => setPlayback(null)}
         />

@@ -228,7 +228,7 @@ test("restores rapid photo import batches with unique order", async ({ page }) =
   await expect(page.getByText("2 of 2 photos processed")).toBeVisible();
 });
 
-test("restores and saves manually placed photos with a note-only stop", async ({
+test("restores and plays a manually placed note stop", async ({
   page,
 }) => {
   const title = "Recovered no-EXIF walk";
@@ -271,6 +271,14 @@ test("restores and saves manually placed photos with a note-only stop", async ({
   );
   await expect(page.getByText(/1 placed · 2 unplaced/)).toBeVisible();
 
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "Note-only stop" })
+    .getByRole("button", { name: /Select for placement: note/ })
+    .click();
+  await placeAtCenter.click();
+  await expect(page.getByText(/2 placed · 1 unplaced/)).toBeVisible();
+
   await page.getByRole("button", { name: "Save walk" }).click();
   await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
@@ -283,12 +291,22 @@ test("restores and saves manually placed photos with a note-only stop", async ({
   await expect(stops.nth(1).getByRole("img", { name: "No-EXIF photo 2" })).toBeVisible();
   await expect(stops.nth(2)).toContainText(note);
 
+  await page.getByRole("button", { name: "Step through stops" }).click();
+  const playback = page.getByRole("dialog", {
+    name: `Walk playback: ${title}`,
+  });
+  await expect(playback.getByText("Stop 1 of 2 · Photo")).toBeVisible();
+  await playback.getByRole("button", { name: /Next/ }).click();
+  await expect(playback.getByText("Stop 2 of 2 · Note")).toBeVisible();
+  await expect(playback.getByText(note, { exact: true })).toBeVisible();
+  await playback.getByRole("button", { name: /Exit/ }).click();
+
   await page.reload();
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Stops along this walk" }).getByRole("listitem"),
   ).toHaveCount(3);
-  await expect(page.getByText(note)).toBeVisible();
+  await expect(page.getByText(note, { exact: true })).toBeVisible();
 });
 
 test("keeps a 100-photo draft editable while reporting progress", async ({

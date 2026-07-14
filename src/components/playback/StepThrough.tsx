@@ -6,7 +6,7 @@ import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { MediaMarker } from "@/components/map/MediaMarker";
 import { isHeicMime } from "@/lib/media-url";
-import type { LineString, MediaPin } from "@/lib/types";
+import type { LineString, WalkPin } from "@/lib/types";
 
 /**
  * Non-animated playback: fit the route once, page through the stops.
@@ -20,7 +20,7 @@ export function StepThrough({
 }: {
   title: string;
   path: LineString;
-  media: MediaPin[];
+  media: WalkPin[];
 }) {
   const mapRef = useRef<MapRef>(null);
   const [index, setIndex] = useState(0);
@@ -80,15 +80,21 @@ export function StepThrough({
       >
         {media.length === 0 ? (
           <p className="text-sm text-ink-muted">
-            This walk has no photo stops yet — enjoy the route.
+            This walk has no located stops yet — enjoy the route.
           </p>
         ) : (
           <>
             <p className="text-sm text-ink-muted">
               Stop {index + 1} of {media.length} ·{" "}
-              {stop!.kind === "photo" ? "Photo" : "Audio note"}
+              {stop!.kind === "note"
+                ? "Note"
+                : stop!.kind === "photo"
+                  ? "Photo"
+                  : "Audio note"}
             </p>
-            {stop!.kind === "photo" ? (
+            {stop!.kind === "note" ? (
+              <p className="rounded-lg bg-wash p-3 text-sm">{stop!.note}</p>
+            ) : stop!.kind === "photo" ? (
               isHeicMime(stop!.mimeType) ? (
                 <p className="rounded-lg bg-wash p-3 text-sm">
                   HEIC preview unavailable. Original photo retained.
@@ -112,7 +118,9 @@ export function StepThrough({
                 Audio unavailable.
               </p>
             )}
-            {stop!.caption && <p className="text-sm">{stop!.caption}</p>}
+            {stop!.kind !== "note" && stop!.caption && (
+              <p className="text-sm">{stop!.caption}</p>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
