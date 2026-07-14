@@ -2,7 +2,7 @@
 
 Michi turns the photos from a walk into a map-based memory: import a camera roll, place the moments that need help, replay the route in time order, and reveal stories from the path beneath your own.
 
-The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, bounded EXIF batch import, browser-restored placement drafts, reliable media sync, and an initial replay experience are working. Complete time-based replay and the Layered Memory experience are still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
+The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, bounded EXIF batch import, browser-restored placement drafts, reliable media sync, and chronological replay are working. The Layered Memory experience is still planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
 
 ## Stack
 
@@ -84,6 +84,17 @@ pnpm test:e2e
 
 Vitest covers pure TypeScript logic, pgTAP covers database authorization, and Chromium Playwright covers the seeded user journey with `axe-core`. CI runs the same gate on every push and pull request.
 Playwright serves the most recent production build on port 3100, so run `pnpm build` before `pnpm test:e2e` locally.
+
+To record the opt-in 100-stop replay trace and verify that React commits stay
+bounded to controls and stop changes rather than animation frames, run:
+
+```bash
+pnpm build
+pnpm test:replay-trace
+```
+
+This writes the Playwright trace under `test-results/`; CI keeps the release
+journey at 20 stops and does not enforce a machine-dependent FPS threshold.
 
 To smoke-test the production build locally:
 

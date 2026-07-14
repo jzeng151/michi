@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
 import { lineStringFromCoordinates, pathDistance } from "./geo";
 import { isHeicMime, resolveMediaUrls } from "./media-url";
+import { orderReplayStops } from "./playback";
 import type {
   LineString,
   MediaRow,
@@ -17,18 +18,12 @@ type Client = SupabaseClient<Database>;
 
 // Single literal (not concatenated) so supabase-js can parse it at the type level.
 const SUMMARY_SELECT =
-  "id, owner_id, title, description, region, path, distance_m, duration_s, visibility, is_curated, created_at, walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))";
+  "id, owner_id, title, description, region, path, distance_m, duration_s, visibility, is_curated, created_at, walk_stops(id, kind, sort_index, captured_at, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))";
 
 type StopWithMedia = WalkStopRow & { walk_media: MediaRow | null };
 type SummaryRow = WalkRow & {
   walk_stops: StopWithMedia[];
 };
-
-function ordered(stops: StopWithMedia[]): StopWithMedia[] {
-  return [...stops].sort(
-    (a, b) => a.sort_index - b.sort_index || a.id.localeCompare(b.id),
-  );
-}
 
 function placedCoordinates(stops: StopWithMedia[]): [number, number][] {
   return stops.flatMap((stop) =>
@@ -69,7 +64,7 @@ async function toSummaries(
   supabase: Client,
   rows: SummaryRow[],
 ): Promise<WalkSummary[]> {
-  const stops = rows.map((row) => ordered(row.walk_stops));
+  const stops = rows.map((row) => orderReplayStops(row.walk_stops));
   const covers = stops.map(coverOf);
   const urls = await resolveMediaUrls(
     supabase,
@@ -146,14 +141,14 @@ export async function fetchWalkDetail(
   const { data } = await supabase
     .from("walks")
     .select(
-      "*, profiles!walks_owner_id_fkey(username, display_name), walk_stops(id, kind, sort_index, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))",
+      "*, profiles!walks_owner_id_fkey(username, display_name), walk_stops(id, kind, sort_index, captured_at, lat, lng, note, walk_media(id, bucket, storage_path, alt_text, mime_type))",
     )
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
 
   const row = data as unknown as DetailRow;
-  const stops = ordered(row.walk_stops);
+  const stops = orderReplayStops(row.walk_stops);
   const mediaRows = stops.flatMap((stop) =>
     stop.walk_media ? [stop.walk_media] : [],
   );
@@ -166,6 +161,7 @@ export async function fetchWalkDetail(
               id: stop.id,
               kind: "note",
               note: stop.note,
+              capturedAt: stop.captured_at,
               lat: stop.lat,
               lng: stop.lng,
             },
@@ -183,6 +179,7 @@ export async function fetchWalkDetail(
       mimeType: row.mime_type,
       alt: row.alt_text,
       caption: stop.note,
+      capturedAt: stop.captured_at,
       lat: stop.lat,
       lng: stop.lng,
     };

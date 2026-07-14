@@ -3,13 +3,13 @@ import { pathDistance } from "./geo";
 import { isHeicMime } from "./media-url";
 import { fetchBrowseLists, fetchWalkDetail } from "./walks";
 
-it("keeps unplaced media and measures a route derived from placed stops", async () => {
+it("orders stops chronologically and derives a route from placed stops", async () => {
   const coordinates: [number, number][] = [
     [135, 35],
     [135.001, 35.001],
   ];
   const noteCoordinate: [number, number] = [134.999, 34.999];
-  const route = [noteCoordinate, ...coordinates];
+  const route = [coordinates[1], coordinates[0], noteCoordinate];
   const media = (id: string, mimeType = "image/webp") => ({
     id,
     bucket: "curated",
@@ -32,27 +32,30 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     profiles: { username: "owner", display_name: null },
     walk_stops: [
       {
-        id: "stop-1",
-        kind: "photo",
-        sort_index: 0,
-        lat: null,
-        lng: null,
-        note: "Needs placement",
-        walk_media: media("unplaced", "image/heic"),
-      },
-      {
         id: "note-1",
         kind: "note",
         sort_index: 1,
+        captured_at: null,
         lat: noteCoordinate[1],
         lng: noteCoordinate[0],
         note: "Tea beside the old cedar.",
         walk_media: null,
       },
+      {
+        id: "stop-1",
+        kind: "photo",
+        sort_index: 0,
+        captured_at: null,
+        lat: null,
+        lng: null,
+        note: "Needs placement",
+        walk_media: media("unplaced", "image/heic"),
+      },
       ...coordinates.map(([lng, lat], index) => ({
         id: `stop-${index + 2}`,
         kind: "photo",
         sort_index: index + 2,
+        captured_at: `2026-01-0${2 - index}T00:00:00Z`,
         lat,
         lng,
         note: null,
@@ -81,34 +84,36 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
   } as unknown as Parameters<typeof fetchBrowseLists>[0];
   const lists = await fetchBrowseLists(browseClient, row.owner_id);
 
-  expect(detail?.media.map(({ id }) => id)).toEqual([
-    "unplaced",
-    "note-1",
-    "placed-1",
-    "placed-2",
+  expect(detail?.media.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
+    ["placed-2", "2026-01-01T00:00:00Z"],
+    ["placed-1", "2026-01-02T00:00:00Z"],
+    ["unplaced", null],
+    ["note-1", null],
   ]);
-  expect(detail?.pins.map(({ id }) => id)).toEqual([
-    "note-1",
-    "placed-1",
-    "placed-2",
+  expect(detail?.pins.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
+    ["placed-2", "2026-01-01T00:00:00Z"],
+    ["placed-1", "2026-01-02T00:00:00Z"],
+    ["note-1", null],
   ]);
-  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([1, 2, 3]);
-  expect(detail?.pins[0]).toEqual({
+  expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([0, 1, 3]);
+  expect(detail?.pins[2]).toEqual({
     id: "note-1",
     kind: "note",
     note: "Tea beside the old cedar.",
+    capturedAt: null,
     lat: noteCoordinate[1],
     lng: noteCoordinate[0],
-    listIndex: 1,
+    listIndex: 3,
   });
-  expect(detail?.media[1]).toEqual({
+  expect(detail?.media[3]).toEqual({
     id: "note-1",
     kind: "note",
     note: "Tea beside the old cedar.",
+    capturedAt: null,
     lat: noteCoordinate[1],
     lng: noteCoordinate[0],
   });
-  expect(detail?.media[0]).toMatchObject({
+  expect(detail?.media[2]).toMatchObject({
     mimeType: "image/heic",
     url: null,
   });
@@ -117,6 +122,7 @@ it("keeps unplaced media and measures a route derived from placed stops", async 
     url: null,
   });
   expect(lists.mine[0].cover?.alt).toBe("placed-2");
+  expect(lists.mine[0].start).toEqual(coordinates[1]);
   expect(detail?.walk.path?.coordinates).toEqual(route);
   expect(detail?.walk.distance_m).toBe(pathDistance(route));
   expect(lists.curated[0].distanceM).toBe(pathDistance(route));

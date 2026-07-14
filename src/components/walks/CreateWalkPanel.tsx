@@ -315,6 +315,7 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
                       mimeType: stop.mime,
                       alt: stop.altText || null,
                       caption: stop.caption || null,
+                      capturedAt: stop.capturedAt,
                       lng: stop.lng!,
                       lat: stop.lat!,
                       listIndex,

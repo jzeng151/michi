@@ -12,6 +12,7 @@
     "test": "vitest run --dir src",
     "test:db": "supabase test db",
     "test:e2e": "playwright test",
+    "test:replay-trace": "REPLAY_STOP_COUNT=100 playwright test --project=chromium --grep 'replays every photo in the release journey' --trace on",
     "db:start": "supabase start && supabase seed buckets --local --yes",
     "db:stop": "supabase stop"
   },
