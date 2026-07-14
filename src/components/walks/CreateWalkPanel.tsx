@@ -747,6 +747,12 @@ export function CreateWalkPanel({ userId }: { userId: string }) {
         .eq("id", working.id)
         .maybeSingle();
       if (confirmation.error || confirmation.data) {
+        if (confirmation.error) {
+          setConfirmationPending(true);
+        } else {
+          setExistingWalkId(working.id);
+          setExistingDraftUnlocked(false);
+        }
         await persistForSave(working);
         setSaveMessage(
           "Couldn't confirm the latest save. Nothing was deleted; retry safely when the connection is stable.",

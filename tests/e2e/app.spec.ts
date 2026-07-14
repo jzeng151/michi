@@ -398,6 +398,75 @@ test("cleans new uploads after a failed save contract and retries safely", async
   expect(cleanupRequests).toBe(1);
 });
 
+test("locks a draft when a failed save is confirmed existing", async ({
+  page,
+}) => {
+  await page.route("**/rest/v1/rpc/save_walk_draft", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Ambiguous save response" }),
+    }),
+  );
+  await page.route("**/rest/v1/walks**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ id: "confirmed" }),
+    }),
+  );
+
+  await page.goto("/dashboard/new");
+  await page.getByRole("button", { name: "Add note-only stop" }).click();
+  await page.getByRole("textbox", { name: /^Note \d+$/ }).fill("Maybe saved.");
+  await page.getByLabel("Title").fill("Ambiguous committed walk");
+  await page.getByRole("button", { name: "Save walk" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Saved walk already exists" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveCount(0);
+});
+
+test("protects uploads while failed-save confirmation is unavailable", async ({
+  page,
+}) => {
+  let rpcRequests = 0;
+  await page.route("**/rest/v1/rpc/save_walk_draft", async (route) => {
+    rpcRequests += 1;
+    if (rpcRequests === 1) {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "Ambiguous save response" }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  const failConfirmation = (route: Route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Confirmation unavailable" }),
+    });
+  await page.route("**/rest/v1/walks**", failConfirmation);
+
+  const [photo] = await preparePhotoDraft(page, 1, "Unconfirmed save walk");
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page.getByText(/Couldn't confirm the latest save/)).toBeVisible();
+  await expect(
+    photoCard(page, photo.name).getByRole("button", {
+      name: `Remove ${photo.name}`,
+    }),
+  ).toHaveCount(0);
+
+  await page.unroute("**/rest/v1/walks**", failConfirmation);
+  await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(page).toHaveURL(/\/dashboard\/walks\/[0-9a-f-]+$/);
+  expect(rpcRequests).toBe(2);
+});
+
 test("preserves a browser draft when the session expires before save", async ({
   page,
 }) => {
@@ -694,6 +763,13 @@ test("opens a saved walk when browser draft cleanup stays blocked", async ({
   const [ambiguousPhoto] = await importUnplacedPhotos(page, 1);
   await fillPhotoDescriptions(page, [ambiguousPhoto], "Ambiguous upload");
   await page.getByRole("button", { name: "Save walk" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Saved walk already exists" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Title")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Continue editing browser draft" })
+    .click();
   await expect(page.getByText(/Couldn't confirm the latest save/)).toBeVisible();
   await expect(
     photoCard(page, ambiguousPhoto.name).getByRole("button", {
