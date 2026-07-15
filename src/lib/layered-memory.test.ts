@@ -33,6 +33,7 @@ it("merges stories deterministically without mutating either source list", () =>
     routeTitle: "Nakasendo",
     timePeriod: "Edo period",
     title: waypointId,
+    titleJa: null,
     story: `${waypointId} story`,
     lat: 35,
     lng: 135,
@@ -41,6 +42,9 @@ it("merges stories deterministically without mutating either source list", () =>
     url: null,
     alt: null,
     mimeType: null,
+    mediaCredit: null,
+    mediaLicense: null,
+    mediaSourceUrl: null,
   });
   const matches = [
     match("stop-1", "farther", 40, 0),

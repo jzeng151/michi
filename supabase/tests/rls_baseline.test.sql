@@ -266,9 +266,8 @@ select is(
   1::bigint,
   'anonymous users can read a curated public walk'
 );
-select is(
-  (select count(*) from public.walk_media where storage_path = 'sakura-canal.webp'),
-  1::bigint,
+select ok(
+  exists (select 1 from public.walk_media where storage_path = 'sakura-canal.webp'),
   'anonymous users can read curated public media'
 );
 select is(

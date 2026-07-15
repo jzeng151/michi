@@ -82,6 +82,7 @@ it("orders stops chronologically and derives a route from placed stops", async (
           route_title: "Nakasendo",
           time_period: "Edo period",
           title: "Post town",
+          title_ja: "宿場町",
           story: "A story beside the personal stop.",
           lat: coordinates[0][1],
           lng: coordinates[0][0],
@@ -92,6 +93,9 @@ it("orders stops chronologically and derives a route from placed stops", async (
           media_path: "story.webp",
           media_alt: "Historic post town",
           media_mime_type: "image/webp",
+          media_credit: "Photographer",
+          media_license: "CC BY 4.0",
+          media_source_url: "https://example.com/photo",
         },
       ],
       error: null,
@@ -149,6 +153,8 @@ it("orders stops chronologically and derives a route from placed stops", async (
     matchedStopId: "stop-3",
     waypointId: "waypoint-1",
     title: "Post town",
+    titleJa: "宿場町",
+    mediaCredit: "Photographer",
     url: expect.stringContaining("/curated/story.webp"),
   });
   expect(

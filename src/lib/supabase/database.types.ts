@@ -87,12 +87,16 @@ export type Database = {
           lat: number
           lng: number
           location: unknown
+          media_credit: string | null
           media_id: string | null
+          media_license: string | null
+          media_source_url: string | null
           route_id: string
           sort_index: number
           story: string
           time_period: string
           title: string
+          title_ja: string | null
         }
         Insert: {
           created_at?: string
@@ -100,12 +104,16 @@ export type Database = {
           lat: number
           lng: number
           location?: unknown
+          media_credit?: string | null
           media_id?: string | null
+          media_license?: string | null
+          media_source_url?: string | null
           route_id: string
           sort_index: number
           story: string
           time_period: string
           title: string
+          title_ja?: string | null
         }
         Update: {
           created_at?: string
@@ -113,12 +121,16 @@ export type Database = {
           lat?: number
           lng?: number
           location?: unknown
+          media_credit?: string | null
           media_id?: string | null
+          media_license?: string | null
+          media_source_url?: string | null
           route_id?: string
           sort_index?: number
           story?: string
           time_period?: string
           title?: string
+          title_ja?: string | null
         }
         Relationships: [
           {
@@ -429,15 +441,19 @@ export type Database = {
           matched_stop_id: string
           media_alt: string
           media_bucket: string
+          media_credit: string
           media_id: string
+          media_license: string
           media_mime_type: string
           media_path: string
+          media_source_url: string
           route_id: string
           route_title: string
           sort_index: number
           story: string
           time_period: string
           title: string
+          title_ja: string
           waypoint_id: string
         }[]
       }

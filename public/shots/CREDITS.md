@@ -12,5 +12,8 @@ These photographs are used in the Michi demo and its marketing screenshots. Crop
 - Inamuragasaki coastal view by Quercus acuta, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/): [source](https://commons.wikimedia.org/wiki/File:Mt._Fuji_from_Inamuragasaki.jpg)
 - Shibuya Center-gai at night by Christophe95, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/): [source](https://commons.wikimedia.org/wiki/File:Shibuya_Center-Gai_at_night.jpg)
 - Okusha Hohaisho at Fushimi Inari by そらみみ, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/): [source](https://commons.wikimedia.org/wiki/File:Okusha-Hohaijo_of_Fushimi_Inari_Grand_Shrine.JPG)
+- Daimon-zaka on the Kumano Kodo by NY066, [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/): [source](https://commons.wikimedia.org/wiki/File:Kumanokodo-Daimonzaka.JPG)
+- Kumano Nachi Taisha by Fg2, public domain: [source](https://commons.wikimedia.org/wiki/File:KumanoNachiTaisha.jpg)
+- Seiganto-ji pagoda and Nachi Falls by Suikotei, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/): [source](https://commons.wikimedia.org/wiki/File:Seiganto-ji_Three-storied_Pagoda_and_Nachi_Falls.jpg)
 
 The generated dawn hero image is grounded in the credited Philosopher's Path photograph but is not presented as documentary or Google Street View imagery.

@@ -171,6 +171,7 @@ async function fetchCuratedMatches(
     routeTitle: row.route_title,
     timePeriod: row.time_period,
     title: row.title,
+    titleJa: row.title_ja,
     story: row.story,
     lat: row.lat,
     lng: row.lng,
@@ -179,6 +180,9 @@ async function fetchCuratedMatches(
     url: row.media_path ? (urls.get(row.media_path) ?? null) : null,
     alt: row.media_alt,
     mimeType: row.media_mime_type,
+    mediaCredit: row.media_credit,
+    mediaLicense: row.media_license,
+    mediaSourceUrl: row.media_source_url,
   }));
 }
 

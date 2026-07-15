@@ -15,6 +15,7 @@ import {
 import { isHeicMime } from "@/lib/media-url";
 import { PLAYBACK_SPEEDS } from "@/lib/playback";
 import type { LineString, WalkStop } from "@/lib/types";
+import { CuratedStory } from "./CuratedStory";
 import { StepThrough } from "./StepThrough";
 import { usePlaybackTimeline, type Stop } from "./usePlaybackTimeline";
 
@@ -345,29 +346,13 @@ function CinematicPlayback({
 function StopPopup({ stop, layered }: { stop: Stop; layered: boolean }) {
   return (
     <figure className="max-w-md rounded-2xl border border-line bg-surface p-3 shadow-xl">
-      {layered && (
+      {layered && stop.kind !== "story" && (
         <p className="mb-2 text-sm font-semibold text-accent-text">
-          {stop.kind === "story" ? "The path's story" : "Your stop"}
+          Your stop
         </p>
       )}
       {stop.kind === "story" ? (
-        <>
-          {stop.url && (
-            // eslint-disable-next-line @next/next/no-img-element -- public curated storage URL
-            <img
-              src={stop.url}
-              alt={stop.alt ?? ""}
-              className="max-h-52 w-full rounded-xl object-cover"
-            />
-          )}
-          <figcaption className="px-2 py-2">
-            <p className="font-display text-xl font-semibold">{stop.title}</p>
-            <p className="text-xs text-ink-muted">
-              {stop.timePeriod} · {stop.routeTitle}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed">{stop.story}</p>
-          </figcaption>
-        </>
+        <CuratedStory entry={stop} />
       ) : stop.kind === "note" ? (
         <p className="whitespace-pre-wrap px-6 py-4 text-lg">{stop.note}</p>
       ) : stop.kind === "photo" ? (

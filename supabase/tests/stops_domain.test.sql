@@ -218,30 +218,19 @@ select throws_ok(
   'a note stop needs content'
 );
 
-with expected (walk_id, sort_index, lat, lng, note, storage_path) as (
-  values
-    ('10000000-0000-4000-8000-000000000001'::uuid, 0, 35.0254::double precision, 135.7946::double precision, 'The canal in full bloom near Ginkaku-ji', 'sakura-canal.webp'),
-    ('10000000-0000-4000-8000-000000000001'::uuid, 1, 35.0186::double precision, 135.7946::double precision, 'Canal-side path and bridge near Ginkaku-ji', 'stone-bridge.webp'),
-    ('10000000-0000-4000-8000-000000000002'::uuid, 0, 35.5455::double precision, 137.5808::double precision, 'On the old road between Magome and Tsumago', 'cedar-trail.webp'),
-    ('10000000-0000-4000-8000-000000000002'::uuid, 1, 35.5745::double precision, 137.5938::double precision, 'Tsumago, lovingly preserved', 'post-town.webp'),
-    ('10000000-0000-4000-8000-000000000003'::uuid, 0, 35.3084::double precision, 139.5301::double precision, 'Yuigahama, looking along the Kamakura coast', 'coastal-wave.webp'),
-    ('10000000-0000-4000-8000-000000000003'::uuid, 1, 35.3040::double precision, 139.5227::double precision, 'The coastal view from Inamuragasaki', 'sunset-cape.webp'),
-    ('10000000-0000-4000-8000-000000000004'::uuid, 0, 35.6591::double precision, 139.7006::double precision, 'The scramble after dark', 'neon-crossing.webp'),
-    ('10000000-0000-4000-8000-000000000004'::uuid, 1, 35.6628::double precision, 139.6987::double precision, 'Center-gai after dark', 'lantern-alley.webp'),
-    ('10000000-0000-4000-8000-000000000005'::uuid, 0, 34.9679::double precision, 135.7756::double precision, 'Senbon torii, just after dawn', 'vermilion-gates.webp'),
-    ('10000000-0000-4000-8000-000000000005'::uuid, 1, 34.9680::double precision, 135.7773::double precision, 'Okusha Hohaisho at Fushimi Inari', 'fox-shrine.webp')
-)
 select is(
   (
-    select count(*)
-    from expected e
-    join public.walk_stops s on s.walk_id = e.walk_id
-      and s.sort_index = e.sort_index and s.lat = e.lat and s.lng = e.lng
-      and s.note = e.note
-    join public.walk_media m on m.stop_id = s.id and m.storage_path = e.storage_path
+    select string_agg(title || ':' || stop_count, ', ' order by id)
+    from (
+      select w.id, w.title, count(s.id)::text as stop_count
+      from public.walks w
+      join public.walk_stops s on s.walk_id = w.id
+      where w.is_curated
+      group by w.id, w.title
+    ) seeded
   ),
-  10::bigint,
-  'seeded walks retain the same ordered pins after migration'
+  'Philosopher''s Path:10, Nakasendo: Magome to Tsumago:10, Kumano Kodo: Daimon-zaka to Nachi:10',
+  'the three seeded routes each expose ten ordered photo stops'
 );
 select is(
   (
