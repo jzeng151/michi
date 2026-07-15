@@ -12,6 +12,7 @@ import {
 } from "@/lib/layered-memory";
 import { isHeicMime } from "@/lib/media-url";
 import type { LineString, WalkPin } from "@/lib/types";
+import { CuratedStory } from "./CuratedStory";
 
 /**
  * Non-animated playback: fit the route once, page through the stops.
@@ -129,24 +130,7 @@ export function StepThrough({
             </p>
             {stop!.kind === "story" ? (
               <article className="rounded-xl bg-wash p-3">
-                <p className="text-sm font-semibold text-accent-text">
-                  The path&apos;s story
-                </p>
-                <h2 className="mt-1 font-display text-lg font-semibold">
-                  {stop!.title}
-                </h2>
-                <p className="text-xs text-ink-muted">
-                  {stop!.timePeriod} · {stop!.routeTitle}
-                </p>
-                {stop!.url && (
-                  // eslint-disable-next-line @next/next/no-img-element -- public curated storage URL
-                  <img
-                    src={stop!.url}
-                    alt={stop!.alt ?? ""}
-                    className="mt-3 max-h-48 w-full rounded-lg object-cover"
-                  />
-                )}
-                <p className="mt-2 text-sm leading-relaxed">{stop!.story}</p>
+                <CuratedStory entry={stop!} />
               </article>
             ) : stop!.kind === "note" ? (
               <p className="rounded-lg bg-wash p-3 text-sm">{stop!.note}</p>

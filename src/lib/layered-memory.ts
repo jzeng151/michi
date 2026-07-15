@@ -7,6 +7,7 @@ export type CuratedWaypointMatch = {
   routeTitle: string;
   timePeriod: string;
   title: string;
+  titleJa: string | null;
   story: string;
   lat: number;
   lng: number;
@@ -15,6 +16,9 @@ export type CuratedWaypointMatch = {
   url: string | null;
   alt: string | null;
   mimeType: string | null;
+  mediaCredit: string | null;
+  mediaLicense: string | null;
+  mediaSourceUrl: string | null;
 };
 
 export type PersonalReplayEntry = WalkStop & { source: "personal" };
@@ -28,12 +32,16 @@ export type CuratedReplayEntry = {
   routeTitle: string;
   timePeriod: string;
   title: string;
+  titleJa: string | null;
   story: string;
   lat: number;
   lng: number;
   url: string | null;
   alt: string | null;
   mimeType: string | null;
+  mediaCredit: string | null;
+  mediaLicense: string | null;
+  mediaSourceUrl: string | null;
 };
 
 export type ReplayEntry = PersonalReplayEntry | CuratedReplayEntry;
@@ -94,12 +102,16 @@ export function mergeReplayEntries(
       routeTitle: match.routeTitle,
       timePeriod: match.timePeriod,
       title: match.title,
+      titleJa: match.titleJa,
       story: match.story,
       lat: match.lat,
       lng: match.lng,
       url: match.url,
       alt: match.alt,
       mimeType: match.mimeType,
+      mediaCredit: match.mediaCredit,
+      mediaLicense: match.mediaLicense,
+      mediaSourceUrl: match.mediaSourceUrl,
     })),
   ]);
 }

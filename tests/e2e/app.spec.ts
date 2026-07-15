@@ -12,6 +12,23 @@ const layeredWalkId = "12000000-0000-4000-8000-000000000001";
 const layeredWalkTitle = "An afternoon in Tsumago";
 const plainWalkId = "12000000-0000-4000-8000-000000000002";
 const plainWalkTitle = "A plain walk in Sapporo";
+const curatedRoutes = [
+  {
+    id: "10000000-0000-4000-8000-000000000001",
+    title: "Philosopher's Path",
+    japanese: "京都",
+  },
+  {
+    id: walkId,
+    title: walkTitle,
+    japanese: "木曽路",
+  },
+  {
+    id: "10000000-0000-4000-8000-000000000003",
+    title: "Kumano Kodo: Daimon-zaka to Nachi",
+    japanese: "那智勝浦",
+  },
+] as const;
 const replayStopCount = Number(process.env.REPLAY_STOP_COUNT ?? 20);
 
 type StoredDraftSummary = {
@@ -1132,7 +1149,7 @@ test("opens and replays the seeded photo walk without social controls", async ({
   await expect(
     dialog.getByRole("application", { name: `Route map: ${walkTitle}` }),
   ).toBeVisible();
-  await expect(dialog.getByText("Stop 1 of 2", { exact: false })).toBeVisible();
+  await expect(dialog.getByText("Stop 1 of 10", { exact: false })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Next/ })).toBeVisible();
   await expect(dialog.getByRole("button", { name: /Exit/ })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Begin walk" })).toHaveCount(0);
@@ -1167,6 +1184,21 @@ test("layers matched path stories and keeps a far-away replay plain", async ({
     "4. The path's story · Tsumago-juku",
   ]);
   await expect(layered.locator("[data-curated-waypoint]")).toHaveCount(1);
+  await timeline.nth(1).getByRole("button").click();
+  await expect(layered.getByText("妻籠宿", { exact: true }).first()).toBeVisible();
+  await expect(layered.getByText(/Photo: 皓月旗 · CC BY-SA 4\.0/)).toBeVisible();
+  await expect(layered.getByRole("link", { name: "source" })).toHaveAttribute(
+    "href",
+    /commons\.wikimedia\.org/,
+  );
+  await page.setViewportSize({ width: 800, height: 800 });
+  const verticalTitle = layered.locator("[data-vertical-title]");
+  await expect(verticalTitle).toBeVisible();
+  expect(
+    await verticalTitle.evaluate(
+      (element) => getComputedStyle(element).writingMode,
+    ),
+  ).toBe("vertical-rl");
   await expectNoHighImpactViolations(page);
 
   await toggle.uncheck();
@@ -1185,6 +1217,83 @@ test("layers matched path stories and keeps a far-away replay plain", async ({
     plain.getByRole("list", { name: "Replay timeline" }).getByRole("listitem"),
   ).toHaveText(["1. Note", "2. Note"]);
   await expect(plain.getByText(/Your stop|The path's story/)).toHaveCount(0);
+});
+
+test("opens and replays all three curated routes from the gallery", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 800 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("tabpanel").getByRole("listitem"),
+  ).toHaveCount(3);
+
+  for (const route of curatedRoutes) {
+    const link = page.getByRole("link", { name: new RegExp(route.title) });
+    await link.focus();
+    await expect(link).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(page).toHaveURL(new RegExp(`${route.id}$`));
+    await expect(page.getByRole("heading", { name: route.title })).toBeVisible();
+    await expect(page.getByText(route.japanese, { exact: false })).toBeVisible();
+    const stops = page
+      .getByRole("region", { name: "Stops along this walk" })
+      .getByRole("listitem");
+    await expect(stops).toHaveCount(10);
+    const firstPhoto = stops.first().getByRole("img");
+    await expect(firstPhoto).toBeVisible();
+    expect(
+      await firstPhoto.evaluate(
+        (image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0,
+      ),
+    ).toBe(true);
+
+    const play = page.getByRole("button", { name: "Play this walk" });
+    await play.focus();
+    await page.keyboard.press("Enter");
+    const replay = page.getByRole("dialog", {
+      name: `Walk playback: ${route.title}`,
+    });
+    await expect(replay.getByText("Stop 1 of 10", { exact: false })).toBeVisible();
+    await expect(
+      replay.getByRole("list", { name: "Replay timeline" }).getByRole("listitem"),
+    ).toHaveCount(10);
+    await replay.getByRole("button", { name: /Exit/ }).click();
+    await page.goto("/dashboard");
+  }
+});
+
+test("keeps the curated story contrast-safe in every approved theme", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 800, height: 800 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto(`/dashboard/walks/${layeredWalkId}`);
+  await page.getByRole("button", { name: "Play this walk" }).click();
+  const replay = page.getByRole("dialog", {
+    name: `Walk playback: ${layeredWalkTitle}`,
+  });
+  await replay
+    .getByRole("list", { name: "Replay timeline" })
+    .getByRole("button", { name: /Tsumago-juku/ })
+    .first()
+    .click();
+
+  for (const season of ["spring", "summer", "autumn", "winter"]) {
+    for (const mode of ["light", "dark"]) {
+      await page.evaluate(
+        ({ season, mode }) => {
+          document.documentElement.dataset.season = season;
+          document.documentElement.dataset.mode = mode;
+          document.documentElement.style.colorScheme = mode;
+        },
+        { season, mode },
+      );
+      await expectNoHighImpactViolations(page);
+    }
+  }
 });
 
 test("keeps the public walk page photo-first and social-free", async ({ page }) => {

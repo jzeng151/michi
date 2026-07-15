@@ -2,7 +2,7 @@
 
 Michi turns the photos from a walk into a map-based memory: import a camera roll, place the moments that need help, replay the route in time order, and reveal stories from the path beneath your own.
 
-The repository is in active development. The landing page, seasonal themes, authenticated gallery, map shell, bounded EXIF batch import, browser-restored placement drafts, reliable media sync, chronological replay, and the indexed Layered Memory overlay are working. Curated route expansion and production hardening remain planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
+The repository is in active development. The landing page, seasonal themes, authenticated gallery, photo import and draft recovery, chronological replay, indexed Layered Memory overlay, and three bilingual curated routes are working. Authentication and production hardening remain planned work. See [ROADMAP.md](./ROADMAP.md) for the mergeable PR plan and release gates.
 
 ## Stack
 
@@ -131,6 +131,7 @@ pnpm db:stop
 - Spring, Summer, Autumn, and Winter themes are approved, including light and dark modes.
 - The photo-first import, replay, and Layered Memory paths are the v1 priority.
 - Layered Memory matches visible personal stops to immutable curated waypoint stories within an inclusive 100-metre radius; the replay layer is on by default and can be hidden.
+- The local curated gallery contains Philosopher's Path, Nakasendo, and Kumano Kodo, with ten bilingual, photographed, credited waypoint stories per route.
 - GPS recording, audio capture, and social data remain available in code and schema but are not exposed in the v1 UI.
 - Install prompts, offline maps/media, and anonymous share links are cuttable. Core import and replay correctness are not.
 
