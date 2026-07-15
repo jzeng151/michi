@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./supabase/database.types";
 import { lineStringFromCoordinates, pathDistance } from "./geo";
+import type { CuratedWaypointMatch } from "./layered-memory";
 import { isHeicMime, resolveMediaUrls } from "./media-url";
 import { orderReplayStops } from "./playback";
 import type {
@@ -127,12 +128,59 @@ export type WalkDetailData = {
   ownerUsername: string;
   media: WalkStop[];
   pins: WalkPin[];
+  curatedMatches: CuratedWaypointMatch[];
 };
 
 type DetailRow = WalkRow & {
   profiles: { username: string; display_name: string | null } | null;
   walk_stops: StopWithMedia[];
 };
+
+type CuratedMatchRow =
+  Database["public"]["Functions"]["match_curated_waypoints"]["Returns"][number];
+
+async function fetchCuratedMatches(
+  supabase: Client,
+  walkId: string,
+): Promise<CuratedWaypointMatch[]> {
+  const { data, error } = await supabase.rpc("match_curated_waypoints", {
+    p_walk_id: walkId,
+  });
+  if (error) throw error;
+
+  const rows = (data ?? []) as CuratedMatchRow[];
+  const mediaRows = rows.flatMap<MediaRow>((row) =>
+    row.media_id && row.media_bucket === "curated" && row.media_path
+      ? [
+          {
+            id: row.media_id,
+            bucket: "curated",
+            storage_path: row.media_path,
+            alt_text: row.media_alt,
+            mime_type: row.media_mime_type,
+          },
+        ]
+      : [],
+  );
+  const urls = await resolveMediaUrls(supabase, mediaRows);
+
+  return rows.map((row) => ({
+    matchedStopId: row.matched_stop_id,
+    waypointId: row.waypoint_id,
+    routeId: row.route_id,
+    routeTitle: row.route_title,
+    timePeriod: row.time_period,
+    title: row.title,
+    story: row.story,
+    lat: row.lat,
+    lng: row.lng,
+    sortIndex: row.sort_index,
+    distanceM: row.distance_m,
+    url: row.media_path ? (urls.get(row.media_path) ?? null) : null,
+    alt: row.media_alt,
+    mimeType: row.media_mime_type,
+  }));
+}
 
 export async function fetchWalkDetail(
   supabase: Client,
@@ -152,7 +200,10 @@ export async function fetchWalkDetail(
   const mediaRows = stops.flatMap((stop) =>
     stop.walk_media ? [stop.walk_media] : [],
   );
-  const urls = await resolveMediaUrls(supabase, mediaRows);
+  const [urls, curatedMatches] = await Promise.all([
+    resolveMediaUrls(supabase, mediaRows),
+    row.is_curated ? Promise.resolve([]) : fetchCuratedMatches(supabase, row.id),
+  ]);
   const media = stops.flatMap<WalkStop>((stop) => {
     if (stop.kind === "note") {
       return stop.note
@@ -171,7 +222,7 @@ export async function fetchWalkDetail(
     if (!stop.walk_media) return [];
     const row = stop.walk_media;
     const item: MediaStop = {
-      id: row.id,
+      id: stop.id,
       kind: stop.kind,
       url: isHeicMime(row.mime_type)
         ? null
@@ -214,5 +265,6 @@ export async function fetchWalkDetail(
     ownerUsername: profile?.username ?? "walker",
     media,
     pins,
+    curatedMatches,
   };
 }

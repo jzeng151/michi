@@ -21,11 +21,12 @@ import {
   playbackHoldDuration,
   type PlaybackSpeed,
 } from "@/lib/playback";
-import type { LineString, WalkStop } from "@/lib/types";
+import type { ReplayEntry } from "@/lib/layered-memory";
+import type { LineString } from "@/lib/types";
 
 export type PlaybackStatus = "ready" | "playing" | "media" | "paused" | "ended";
 
-export type Stop = WalkStop & { frac: number };
+export type Stop = ReplayEntry & { frac: number };
 
 const BEARING_SMOOTHING = 0.08;
 const CAMERA = { pitch: 55, zoom: 16.5 };
@@ -37,13 +38,13 @@ const CAMERA = { pitch: 55, zoom: 16.5 };
  */
 export function usePlaybackTimeline({
   path,
-  media,
+  entries,
   getMap,
   markerRef,
   progressElRef,
 }: {
   path: LineString;
-  media: WalkStop[];
+  entries: ReplayEntry[];
   getMap: () => MapRef | null;
   markerRef: React.RefObject<MarkerInstance | null>;
   progressElRef: React.RefObject<HTMLInputElement | null>;
@@ -73,14 +74,14 @@ export function usePlaybackTimeline({
   );
 
   const stops: Stop[] = useMemo(() => {
-    const rawFractions = media.map((stop) =>
+    const rawFractions = entries.map((stop) =>
       stop.lng === null || stop.lat === null
         ? null
         : nearestFraction(path, cumulative, [stop.lng, stop.lat]),
     );
     const fractions = fillStopFractions(rawFractions);
-    return media.map((stop, index) => ({ ...stop, frac: fractions[index] }));
-  }, [media, path, cumulative]);
+    return entries.map((stop, index) => ({ ...stop, frac: fractions[index] }));
+  }, [entries, path, cumulative]);
 
   const clearActiveStop = useCallback(() => {
     mediaGenerationRef.current += 1;

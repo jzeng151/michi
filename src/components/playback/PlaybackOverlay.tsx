@@ -1,10 +1,17 @@
 "use client";
 
-import { forwardRef, memo, useEffect, useRef, useState } from "react";
+import { forwardRef, memo, useEffect, useMemo, useRef, useState } from "react";
 import type { Marker as MarkerInstance } from "maplibre-gl";
 import { Marker, type MapRef } from "react-map-gl/maplibre";
+import { CuratedWaypointMarkers } from "@/components/map/CuratedWaypointMarkers";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
+import {
+  mergeReplayEntries,
+  replayEntryLabel,
+  type CuratedWaypointMatch,
+  type ReplayEntry,
+} from "@/lib/layered-memory";
 import { isHeicMime } from "@/lib/media-url";
 import { PLAYBACK_SPEEDS } from "@/lib/playback";
 import type { LineString, WalkStop } from "@/lib/types";
@@ -35,12 +42,14 @@ export function PlaybackOverlay({
   title,
   path,
   media,
+  curatedMatches,
   initialMode,
   onExit,
 }: {
   title: string;
   path: LineString | null;
   media: WalkStop[];
+  curatedMatches: CuratedWaypointMatch[];
   initialMode: PlaybackMode;
   onExit: () => void;
 }) {
@@ -50,6 +59,13 @@ export function PlaybackOverlay({
       window.matchMedia("(prefers-reduced-motion: reduce)").matches)
       ? "steps"
       : initialMode,
+  );
+  const [showCurated, setShowCurated] = useState(true);
+  const hasCurated = curatedMatches.length > 0;
+  const layered = hasCurated && showCurated;
+  const entries = useMemo(
+    () => mergeReplayEntries(media, layered ? curatedMatches : []),
+    [curatedMatches, layered, media],
   );
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -95,8 +111,22 @@ export function PlaybackOverlay({
       onKeyDown={onKeyDown}
       className="fixed inset-0 z-40 flex flex-col bg-canvas"
     >
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-line bg-surface px-4">
-        <p className="truncate font-display text-lg font-semibold">{title}</p>
+      <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 py-2 sm:px-4">
+        <p className="min-w-0 flex-1 truncate font-display text-lg font-semibold">
+          {title}
+        </p>
+        {hasCurated && (
+          <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-2 text-sm hover:bg-wash">
+            <input
+              type="checkbox"
+              checked={showCurated}
+              onChange={(event) => setShowCurated(event.target.checked)}
+              aria-label="Show the path's stories"
+              className="accent-[var(--accent)]"
+            />
+            <span>Path stories</span>
+          </label>
+        )}
         <button
           type="button"
           data-autofocus
@@ -108,14 +138,21 @@ export function PlaybackOverlay({
       </header>
 
       {mode === "steps" || !path ? (
-        <div className="min-h-0 flex-1">
-          <StepThrough title={title} path={path} media={media} />
+        <div key={layered ? "layered" : "personal"} className="min-h-0 flex-1">
+          <StepThrough
+            title={title}
+            path={path}
+            entries={entries}
+            layered={layered}
+          />
         </div>
       ) : (
         <CinematicPlayback
+          key={layered ? "layered" : "personal"}
           title={title}
           path={path}
-          media={media}
+          entries={entries}
+          layered={layered}
           onExit={onExit}
         />
       )}
@@ -126,12 +163,14 @@ export function PlaybackOverlay({
 function CinematicPlayback({
   title,
   path,
-  media,
+  entries,
+  layered,
   onExit,
 }: {
   title: string;
   path: LineString;
-  media: WalkStop[];
+  entries: ReplayEntry[];
+  layered: boolean;
   onExit: () => void;
 }) {
   const renderCount = useRef(0);
@@ -143,7 +182,7 @@ function CinematicPlayback({
   const replayRef = useRef<HTMLButtonElement>(null);
   const playback = usePlaybackTimeline({
     path,
-    media,
+    entries,
     getMap: () => mapRef.current,
     markerRef,
     progressElRef: progressRef,
@@ -181,6 +220,7 @@ function CinematicPlayback({
         keyboard={false}
       >
         <RouteLayer path={path} />
+        {layered && <CuratedWaypointMarkers entries={entries} />}
         <PlaybackMarker ref={markerRef} longitude={lng} latitude={lat} />
       </MapCanvas>
 
@@ -200,7 +240,7 @@ function CinematicPlayback({
         aria-live="polite"
         className="absolute inset-x-0 bottom-32 z-10 flex justify-center px-4"
       >
-        {activeStop && <StopPopup stop={activeStop} />}
+        {activeStop && <StopPopup stop={activeStop} layered={layered} />}
       </div>
 
       {status === "ended" && (
@@ -240,7 +280,7 @@ function CinematicPlayback({
                     aria-current={activeStop?.id === stop.id ? "step" : undefined}
                     className="rounded-full border border-line px-3 py-1 text-xs transition-colors hover:bg-wash aria-[current=step]:border-accent aria-[current=step]:bg-wash"
                   >
-                    {index + 1}. {stopKind(stop)}
+                    {index + 1}. {replayEntryLabel(stop, layered)}
                   </button>
                 </li>
               ))}
@@ -302,18 +342,33 @@ function CinematicPlayback({
   );
 }
 
-function stopKind(stop: WalkStop): string {
-  return stop.kind === "photo"
-    ? "Photo"
-    : stop.kind === "audio"
-      ? "Audio"
-      : "Note";
-}
-
-function StopPopup({ stop }: { stop: Stop }) {
+function StopPopup({ stop, layered }: { stop: Stop; layered: boolean }) {
   return (
     <figure className="max-w-md rounded-2xl border border-line bg-surface p-3 shadow-xl">
-      {stop.kind === "note" ? (
+      {layered && (
+        <p className="mb-2 text-sm font-semibold text-accent-text">
+          {stop.kind === "story" ? "The path's story" : "Your stop"}
+        </p>
+      )}
+      {stop.kind === "story" ? (
+        <>
+          {stop.url && (
+            // eslint-disable-next-line @next/next/no-img-element -- public curated storage URL
+            <img
+              src={stop.url}
+              alt={stop.alt ?? ""}
+              className="max-h-52 w-full rounded-xl object-cover"
+            />
+          )}
+          <figcaption className="px-2 py-2">
+            <p className="font-display text-xl font-semibold">{stop.title}</p>
+            <p className="text-xs text-ink-muted">
+              {stop.timePeriod} · {stop.routeTitle}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed">{stop.story}</p>
+          </figcaption>
+        </>
+      ) : stop.kind === "note" ? (
         <p className="whitespace-pre-wrap px-6 py-4 text-lg">{stop.note}</p>
       ) : stop.kind === "photo" ? (
         isHeicMime(stop.mimeType) ? (
@@ -335,7 +390,7 @@ function StopPopup({ stop }: { stop: Stop }) {
           <span aria-hidden="true">🎙</span> Audio note playing…
         </p>
       )}
-      {stop.kind !== "note" && stop.caption && (
+      {stop.kind !== "note" && stop.kind !== "story" && stop.caption && (
         <figcaption className="mt-2 text-center text-sm text-ink-muted">
           {stop.caption}
         </figcaption>

@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { pathDistance } from "./geo";
+import { mergeReplayEntries } from "./layered-memory";
 import { isHeicMime } from "./media-url";
 import { fetchBrowseLists, fetchWalkDetail } from "./walks";
 
@@ -72,6 +73,29 @@ it("orders stops chronologically and derives a route from placed stops", async (
         eq: () => ({ maybeSingle: async () => ({ data: row }) }),
       }),
     }),
+    rpc: async () => ({
+      data: [
+        {
+          matched_stop_id: "stop-3",
+          waypoint_id: "waypoint-1",
+          route_id: "route-1",
+          route_title: "Nakasendo",
+          time_period: "Edo period",
+          title: "Post town",
+          story: "A story beside the personal stop.",
+          lat: coordinates[0][1],
+          lng: coordinates[0][0],
+          sort_index: 0,
+          distance_m: 12,
+          media_id: "story-media",
+          media_bucket: "curated",
+          media_path: "story.webp",
+          media_alt: "Historic post town",
+          media_mime_type: "image/webp",
+        },
+      ],
+      error: null,
+    }),
   } as unknown as Parameters<typeof fetchWalkDetail>[0];
 
   const detail = await fetchWalkDetail(client, row.id);
@@ -85,14 +109,14 @@ it("orders stops chronologically and derives a route from placed stops", async (
   const lists = await fetchBrowseLists(browseClient, row.owner_id);
 
   expect(detail?.media.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
-    ["placed-2", "2026-01-01T00:00:00Z"],
-    ["placed-1", "2026-01-02T00:00:00Z"],
-    ["unplaced", null],
+    ["stop-3", "2026-01-01T00:00:00Z"],
+    ["stop-2", "2026-01-02T00:00:00Z"],
+    ["stop-1", null],
     ["note-1", null],
   ]);
   expect(detail?.pins.map(({ id, capturedAt }) => [id, capturedAt])).toEqual([
-    ["placed-2", "2026-01-01T00:00:00Z"],
-    ["placed-1", "2026-01-02T00:00:00Z"],
+    ["stop-3", "2026-01-01T00:00:00Z"],
+    ["stop-2", "2026-01-02T00:00:00Z"],
     ["note-1", null],
   ]);
   expect(detail?.pins.map(({ listIndex }) => listIndex)).toEqual([0, 1, 3]);
@@ -121,6 +145,22 @@ it("orders stops chronologically and derives a route from placed stops", async (
     mimeType: "image/heic",
     url: null,
   });
+  expect(detail?.curatedMatches[0]).toMatchObject({
+    matchedStopId: "stop-3",
+    waypointId: "waypoint-1",
+    title: "Post town",
+    url: expect.stringContaining("/curated/story.webp"),
+  });
+  expect(
+    detail &&
+      mergeReplayEntries(detail.media, detail.curatedMatches).map(({ id }) => id),
+  ).toEqual([
+    "stop-3",
+    "story:stop-3:waypoint-1",
+    "stop-2",
+    "stop-1",
+    "note-1",
+  ]);
   expect(lists.mine[0].cover?.alt).toBe("placed-2");
   expect(lists.mine[0].start).toEqual(coordinates[1]);
   expect(detail?.walk.path?.coordinates).toEqual(route);

@@ -2,11 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type MapRef } from "react-map-gl/maplibre";
+import { CuratedWaypointMarkers } from "@/components/map/CuratedWaypointMarkers";
 import { MapCanvas } from "@/components/map/MapCanvas";
 import { RouteLayer } from "@/components/map/RouteLayer";
 import { MediaMarker } from "@/components/map/MediaMarker";
+import {
+  replayEntryLabel,
+  type ReplayEntry,
+} from "@/lib/layered-memory";
 import { isHeicMime } from "@/lib/media-url";
-import type { LineString, WalkPin, WalkStop } from "@/lib/types";
+import type { LineString, WalkPin } from "@/lib/types";
 
 /**
  * Non-animated playback: fit the route once, page through the stops.
@@ -16,23 +21,25 @@ import type { LineString, WalkPin, WalkStop } from "@/lib/types";
 export function StepThrough({
   title,
   path,
-  media,
+  entries,
+  layered,
 }: {
   title: string;
   path: LineString | null;
-  media: WalkStop[];
+  entries: ReplayEntry[];
+  layered: boolean;
 }) {
   const mapRef = useRef<MapRef>(null);
   const [index, setIndex] = useState(0);
-  const stop = media[index] ?? null;
+  const stop = entries[index] ?? null;
   const pins = useMemo(
     () =>
-      media.flatMap<WalkPin>((item, listIndex) =>
-        item.lng === null || item.lat === null
+      entries.flatMap<WalkPin>((item, listIndex) =>
+        item.kind === "story" || item.lng === null || item.lat === null
           ? []
           : [{ ...item, lng: item.lng, lat: item.lat, listIndex }],
       ),
-    [media],
+    [entries],
   );
   const activePin = pins.find(({ listIndex }) => listIndex === index) ?? null;
 
@@ -90,6 +97,14 @@ export function StepThrough({
           }}
         >
           {path && <RouteLayer path={path} />}
+          {layered && (
+            <CuratedWaypointMarkers
+              entries={entries}
+              activeWaypointId={
+                stop?.kind === "story" ? stop.waypointId : undefined
+              }
+            />
+          )}
           {activePin && (
             <MediaMarker
               pin={activePin}
@@ -99,24 +114,41 @@ export function StepThrough({
         </MapCanvas>
       </div>
       <div
-        className="flex shrink-0 flex-col gap-3 border-t border-line bg-surface p-4"
+        className="flex max-h-[55dvh] shrink-0 flex-col gap-3 overflow-y-auto border-t border-line bg-surface p-4"
         aria-live="polite"
       >
-        {media.length === 0 ? (
+        {entries.length === 0 ? (
           <p className="text-sm text-ink-muted">
             This walk has no stops yet — enjoy the route.
           </p>
         ) : (
           <>
             <p className="text-sm text-ink-muted">
-              Stop {index + 1} of {media.length} ·{" "}
-              {stop!.kind === "note"
-                ? "Note"
-                : stop!.kind === "photo"
-                  ? "Photo"
-                  : "Audio note"}
+              Stop {index + 1} of {entries.length} ·{" "}
+              {replayEntryLabel(stop!, layered)}
             </p>
-            {stop!.kind === "note" ? (
+            {stop!.kind === "story" ? (
+              <article className="rounded-xl bg-wash p-3">
+                <p className="text-sm font-semibold text-accent-text">
+                  The path&apos;s story
+                </p>
+                <h2 className="mt-1 font-display text-lg font-semibold">
+                  {stop!.title}
+                </h2>
+                <p className="text-xs text-ink-muted">
+                  {stop!.timePeriod} · {stop!.routeTitle}
+                </p>
+                {stop!.url && (
+                  // eslint-disable-next-line @next/next/no-img-element -- public curated storage URL
+                  <img
+                    src={stop!.url}
+                    alt={stop!.alt ?? ""}
+                    className="mt-3 max-h-48 w-full rounded-lg object-cover"
+                  />
+                )}
+                <p className="mt-2 text-sm leading-relaxed">{stop!.story}</p>
+              </article>
+            ) : stop!.kind === "note" ? (
               <p className="rounded-lg bg-wash p-3 text-sm">{stop!.note}</p>
             ) : stop!.kind === "photo" ? (
               isHeicMime(stop!.mimeType) ? (
@@ -142,9 +174,28 @@ export function StepThrough({
                 Audio unavailable.
               </p>
             )}
-            {stop!.kind !== "note" && stop!.caption && (
-              <p className="text-sm">{stop!.caption}</p>
-            )}
+            {stop!.kind !== "note" &&
+              stop!.kind !== "story" &&
+              stop!.caption && (
+                <p className="text-sm">{stop!.caption}</p>
+              )}
+            <ol
+              aria-label="Replay timeline"
+              className="flex gap-2 overflow-x-auto pb-1"
+            >
+              {entries.map((entry, entryIndex) => (
+                <li key={entry.id} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIndex(entryIndex)}
+                    aria-current={entryIndex === index ? "step" : undefined}
+                    className="rounded-full border border-line px-3 py-1 text-xs transition-colors hover:bg-wash aria-[current=step]:border-accent aria-[current=step]:bg-wash"
+                  >
+                    {entryIndex + 1}. {replayEntryLabel(entry, layered)}
+                  </button>
+                </li>
+              ))}
+            </ol>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -156,9 +207,9 @@ export function StepThrough({
               </button>
               <button
                 type="button"
-                disabled={index === media.length - 1}
+                disabled={index === entries.length - 1}
                 onClick={() =>
-                  setIndex((i) => Math.min(media.length - 1, i + 1))
+                  setIndex((i) => Math.min(entries.length - 1, i + 1))
                 }
                 className="rounded-full border border-line px-4 py-2 text-sm transition-colors hover:bg-wash disabled:opacity-40"
               >

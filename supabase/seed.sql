@@ -145,6 +145,103 @@ insert into public.walk_media (
 ('11000000-0000-4000-8000-000000000010', 'curated', 'fox-shrine.webp',
  'The red and white Okusha Hohaisho shrine beneath dense trees', 'fox-shrine.webp', 'image/webp', 1);
 
+-- ============================================================ layered memory waypoints
+
+insert into public.curated_waypoints (
+  id, route_id, lat, lng, time_period, title, story, media_id, sort_index
+) values
+(
+  '51000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000002',
+  35.5455,
+  137.5808,
+  'Edo period (1603–1868)',
+  'The road through the cedars',
+  'This forested stretch follows the Nakasendo, the inland road that linked post towns between Kyoto and Edo.',
+  (select id from public.walk_media where stop_id = '11000000-0000-4000-8000-000000000003'),
+  0
+),
+(
+  '51000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002',
+  35.5745,
+  137.5938,
+  'Edo period (1603–1868)',
+  'Tsumago-juku',
+  'Tsumago preserves the scale and rhythm of a Nakasendo post town, where travelers once found lodging and supplies.',
+  (select id from public.walk_media where stop_id = '11000000-0000-4000-8000-000000000004'),
+  1
+);
+
+-- Small personal fixtures exercise both the overlap and no-match replay paths.
+insert into public.walks (
+  id, owner_id, title, description, region, path, distance_m, visibility
+) values
+(
+  '12000000-0000-4000-8000-000000000001',
+  '00000000-0000-4000-8000-000000000001',
+  'An afternoon in Tsumago',
+  'Two personal moments beside the old post road.',
+  'Tsumago, Nagano',
+  '{"type":"LineString","coordinates":[[137.5938,35.5745],[137.5942,35.5745]]}',
+  40,
+  'private'
+),
+(
+  '12000000-0000-4000-8000-000000000002',
+  '00000000-0000-4000-8000-000000000001',
+  'A plain walk in Sapporo',
+  'A fixture outside every curated waypoint radius.',
+  'Sapporo, Hokkaido',
+  '{"type":"LineString","coordinates":[[141.3545,43.0621],[141.3552,43.0624]]}',
+  70,
+  'private'
+);
+
+insert into public.walk_stops (
+  id, walk_id, kind, sort_index, captured_at, lat, lng, note
+) values
+(
+  '41000000-0000-4000-8000-000000000101',
+  '12000000-0000-4000-8000-000000000001',
+  'note',
+  0,
+  '2026-04-12 05:10:00+00',
+  35.5745,
+  137.5938,
+  'Rain eased beneath the eaves.'
+),
+(
+  '41000000-0000-4000-8000-000000000102',
+  '12000000-0000-4000-8000-000000000001',
+  'note',
+  1,
+  '2026-04-12 05:25:00+00',
+  35.5745,
+  137.5942,
+  'I turned back for one last look down the old road.'
+),
+(
+  '41000000-0000-4000-8000-000000000103',
+  '12000000-0000-4000-8000-000000000002',
+  'note',
+  0,
+  '2026-02-08 03:00:00+00',
+  43.0621,
+  141.3545,
+  'Fresh snow along the block.'
+),
+(
+  '41000000-0000-4000-8000-000000000104',
+  '12000000-0000-4000-8000-000000000002',
+  'note',
+  1,
+  '2026-02-08 03:15:00+00',
+  43.0624,
+  141.3552,
+  'Warm light from the corner shop.'
+);
+
 -- ============================================================ likes (recent, so Trending has data)
 
 insert into public.likes (walk_id, user_id, created_at) values
